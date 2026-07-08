@@ -1,0 +1,32 @@
+{
+  "name": "panthop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Panthop — tek tuşla zıpla.",
+  "type": "module",
+  "scripts": {
+    "start": "http-server -p 5173 -c-1 -s .",
+    "icons": "node tools/make-icons.mjs",
+    "icons:svg": "node tools/gen-icons.mjs",
+    "build": "node tools/gen-icons.mjs && node tools/build.mjs",
+    "cap:add:android": "npm run build && cap add android",
+    "cap:add:ios": "npm run build && cap add ios",
+    "cap:sync": "npm run build && cap sync",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "cap:assets": "capacitor-assets generate --android",
+    "cap:assets:ios": "capacitor-assets generate --ios"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "capacitor-game-connect-7": "^7.0.5"
+  }
+}

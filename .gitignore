@@ -1,0 +1,16 @@
+node_modules/
+dist/
+
+# İmzalama anahtarları asla commit edilmez
+*.jks
+*.keystore
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+server.log
+*.log

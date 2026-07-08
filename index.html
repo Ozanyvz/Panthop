@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="tr" data-i18n-title="app.title">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#7ec6f2" />
+<title>Panthop</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="Panthop" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/icons.css" />
+</head>
+<body>
+  <div id="game-root">
+   <div id="game-frame">
+    <canvas id="game-canvas"></canvas>
+
+    <div id="hud" class="hidden">
+      <!-- Top bar: score + this-run collected counters, pause on the far right -->
+      <div class="hud-bar hud-top">
+        <div class="hud-stats">
+          <div id="score-badge">
+            <span id="score-value">0</span>
+          </div>
+          <div id="feather-run-chip" class="hud-chip feather-run-chip hidden">
+            <span class="hud-chip-icon gi gi-feather" aria-hidden="true"></span>
+            <span class="hud-chip-val" id="feather-run-val">0</span>
+          </div>
+        </div>
+        <button id="pause-btn" class="hud-pause-btn" type="button" aria-label="Pause">
+          <span class="gi gi-pause" aria-hidden="true"></span>
+        </button>
+      </div>
+      <!-- Bottom bar: usable ability counters (claw / dodge). Hidden when none. -->
+      <div class="hud-bar hud-bottom hidden">
+        <div class="hud-abilities">
+          <div id="sword-chip" class="hud-chip hidden">
+            <span class="hud-chip-icon gi gi-claw" aria-hidden="true"></span>
+            <span class="hud-chip-val" id="sword-charges">0</span>
+          </div>
+          <div id="dodge-chip" class="hud-chip hidden">
+            <span class="hud-chip-icon gi gi-shield" aria-hidden="true"></span>
+            <span class="hud-chip-val" id="dodge-charges">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="start-screen" class="screen">
+      <div class="vine-frame" aria-hidden="true">
+        <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-tr" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-bl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-br" src="assets/vine-corner.svg" alt="" />
+      </div>
+      <button id="settings-btn" class="corner-btn" type="button" aria-label="Settings"><span class="gi gi-gear" aria-hidden="true"></span></button>
+
+      <div class="title-wrap">
+        <img src="assets/logo-panther.png" alt="" aria-hidden="true" class="brand-mascot" />
+        <h1 class="title"><img src="assets/logo-name-panthop.svg" alt="Panthop" class="title-logo" /></h1>
+        <p class="tagline" data-i18n="start.tagline">Yavru panther Pantho ile engelleri as, en yukari tirman</p>
+      </div>
+
+      <div class="best-card">
+        <div class="best-label" data-i18n="start.best_label">EN YUKSEK</div>
+        <div class="best-value" id="best-score-start">0</div>
+      </div>
+
+      <div class="recent-card">
+        <div class="score-tabs" id="score-tabs">
+          <button class="score-tab active" type="button" data-tab="recent" data-i18n="start.recent_label">Son skorlar</button>
+          <button class="score-tab" type="button" data-tab="best" data-i18n="start.high_label">En yuksek</button>
+        </div>
+        <ul class="recent-list" id="recent-list"></ul>
+      </div>
+
+      <div class="materials-group">
+        <div class="currency-row">
+          <div class="coin-chip" id="coin-chip-start">
+            <span class="coin-icon gi gi-bark" aria-hidden="true"></span>
+            <span class="coin-val" id="coin-value-start">0</span>
+          </div>
+          <div class="coin-chip leaf-chip" id="leaf-chip-start">
+            <span class="coin-icon gi gi-leaf" aria-hidden="true"></span>
+            <span class="coin-val" id="leaf-value-start">0</span>
+          </div>
+          <div class="coin-chip feather-chip hidden" id="feather-chip-start">
+            <span class="coin-icon gi gi-feather" aria-hidden="true"></span>
+            <span class="coin-val" id="feather-value-start">0</span>
+          </div>
+        </div>
+        <div class="menu-btn-row">
+          <div class="upgrades-btn-wrap">
+            <button id="upgrades-btn" class="ghost-btn upgrades-btn"><span data-i18n="start.upgrades_btn">GELISIM</span></button>
+            <span class="upg-btn-badge hidden" id="upgrades-btn-badge"></span>
+          </div>
+          <div class="ach-btn-wrap">
+            <button id="achievements-btn" class="ghost-btn ach-menu-btn" type="button" aria-label="Achievements"><span class="gi gi-trophy" aria-hidden="true"></span></button>
+            <span class="corner-badge hidden" id="achievements-badge"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="start-actions">
+        <button id="start-btn" class="tap-btn">
+          <span class="tap-btn-inner" data-i18n="start.btn">OYNA</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="upgrades-screen" class="screen hidden">
+      <div class="vine-frame" aria-hidden="true">
+        <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-tr" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-bl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-br" src="assets/vine-corner.svg" alt="" />
+      </div>
+      <div class="upg-header">
+        <div class="upg-title" data-i18n="upgrades.title">GELISIM</div>
+      </div>
+
+      <div class="upg-tabs" id="upg-tabs"></div>
+
+      <ul class="upg-list" id="upg-list"></ul>
+
+      <button id="upgrades-back-btn" class="ghost-btn" data-i18n="upgrades.back">GERI</button>
+    </div>
+
+    <div id="achievements-screen" class="screen hidden">
+      <div class="vine-frame" aria-hidden="true">
+        <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-tr" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-bl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-br" src="assets/vine-corner.svg" alt="" />
+      </div>
+      <div class="ach-header">
+        <div class="ach-title" data-i18n="achievements.title">BASARIMLAR</div>
+        <div class="ach-wallet" id="ach-wallet">
+          <div class="gw-item" id="aw-bark">
+            <span class="gw-icon gi gi-bark" aria-hidden="true"></span>
+            <span class="gw-val" id="aw-bark-val">0</span>
+          </div>
+          <div class="gw-item" id="aw-leaf">
+            <span class="gw-icon gi gi-leaf" aria-hidden="true"></span>
+            <span class="gw-val" id="aw-leaf-val">0</span>
+          </div>
+          <div class="gw-item" id="aw-feather">
+            <span class="gw-icon gi gi-feather" aria-hidden="true"></span>
+            <span class="gw-val" id="aw-feather-val">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ach-body" id="ach-body"></div>
+
+      <button id="achievements-back-btn" class="ghost-btn" data-i18n="achievements.back">GERI</button>
+    </div>
+
+    <div id="settings-screen" class="screen hidden">
+      <div class="vine-frame" aria-hidden="true">
+        <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-tr" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-bl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-br" src="assets/vine-corner.svg" alt="" />
+      </div>
+      <div class="settings-title" data-i18n="settings.title">AYARLAR</div>
+
+      <div class="settings-body">
+        <section class="settings-section">
+          <div class="settings-section-label" data-i18n="settings.language">DIL</div>
+          <ul class="lang-options" id="lang-options" role="listbox"></ul>
+        </section>
+
+        <section class="settings-section">
+          <div class="settings-section-label" data-i18n="settings.sound">SES</div>
+          <div class="audio-levels" id="audio-levels"></div>
+        </section>
+
+        <section class="settings-section">
+          <div class="settings-section-label" data-i18n="settings.data">VERILER</div>
+          <button id="reset-progress-btn" class="danger-btn" type="button" data-i18n="settings.reset">ILERLEMEYI SIFIRLA</button>
+          <p class="settings-hint" data-i18n="settings.reset_hint">Skorlar, agac kabugu, yaprak ve gelismeler silinir.</p>
+        </section>
+      </div>
+
+      <button id="settings-back-btn" class="ghost-btn" data-i18n="settings.back">GERI</button>
+    </div>
+
+    <div id="gameover-screen" class="screen hidden">
+      <div class="vine-frame" aria-hidden="true">
+        <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-tr" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-bl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-br" src="assets/vine-corner.svg" alt="" />
+      </div>
+      <div class="go-head">
+        <div class="go-wallet" id="go-wallet">
+          <div class="gw-item" id="gw-bark">
+            <span class="gw-icon gi gi-bark" aria-hidden="true"></span>
+            <span class="gw-val" id="gw-bark-val">0</span>
+          </div>
+          <div class="gw-item" id="gw-leaf">
+            <span class="gw-icon gi gi-leaf" aria-hidden="true"></span>
+            <span class="gw-val" id="gw-leaf-val">0</span>
+          </div>
+          <div class="gw-item" id="gw-feather">
+            <span class="gw-icon gi gi-feather" aria-hidden="true"></span>
+            <span class="gw-val" id="gw-feather-val">0</span>
+          </div>
+        </div>
+
+        <div class="go-title" data-i18n="gameover.title">OYUN BITTI</div>
+      </div>
+
+      <div class="go-cards">
+        <div class="go-card reveal-card" id="reveal-card">
+          <div class="reveal-score" id="final-score">0</div>
+          <div class="score-meta">
+            <span class="best-inline">
+              <span class="cell-label" data-i18n="gameover.best_label">REKOR</span>
+              <span class="best-inline-val" id="final-best">0</span>
+            </span>
+          </div>
+          <div id="new-best-badge" class="new-best hidden" data-i18n="gameover.new_best">YENI REKOR</div>
+        </div>
+
+        <div class="go-card milestone-card hidden" id="milestone-card">
+          <div class="cell-label" data-i18n="gameover.achievement_unlocked">BASARIM ACILDI</div>
+          <div class="milestone-badges" id="milestone-badges"></div>
+          <button class="go-ach-btn" id="go-ach-btn" type="button">
+            <span class="go-ach-icon gi gi-trophy" aria-hidden="true"></span>
+            <span class="go-ach-label" data-i18n="gameover.view_achievement">BASARIMI AC</span>
+            <span class="go-ach-new" data-i18n="upgrades.new_badge">YENI</span>
+            <span class="go-ach-arrow">→</span>
+          </button>
+        </div>
+
+        <div class="go-card collected-card hidden" id="collected-card">
+          <div class="cell-label" data-i18n="gameover.collected_label">TOPLANAN</div>
+          <div class="collected-rows">
+            <div class="earned-line" id="bark-row">
+              <span class="earned-icon gi gi-bark" aria-hidden="true"></span>
+              <span class="earned-val" id="bark-earned">+0</span>
+            </div>
+            <div class="earned-line feather-earned hidden" id="feather-row">
+              <span class="earned-icon gi gi-feather" aria-hidden="true"></span>
+              <span class="earned-val" id="feather-earned">+0</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="reward-2x hidden" id="reward-2x-btn" type="button">
+          <span class="reward-2x-icon gi gi-tv" aria-hidden="true"></span>
+          <span data-i18n="gameover.reward_2x">IZLE: KABUK X2</span>
+        </button>
+
+        <button class="upg-available hidden" id="upg-available" type="button">
+          <span class="upg-available-dot">●</span>
+          <span data-i18n="gameover.upg_available">GELISIM ALINABILIR</span>
+          <span class="upg-new-badge hidden" id="upg-new-badge" data-i18n="upgrades.new_badge">YENI</span>
+          <span class="upg-available-arrow">→</span>
+        </button>
+      </div>
+
+      <div class="go-actions hidden" id="go-actions">
+        <button id="retry-btn" class="tap-btn">
+          <span class="tap-btn-inner" data-i18n="gameover.retry">DEVAM</span>
+        </button>
+        <button id="home-btn" class="ghost-btn" data-i18n="gameover.home">ANA MENU</button>
+      </div>
+    </div>
+
+    <div id="ach-modal-overlay" class="ach-modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="ach-modal" id="ach-modal">
+        <button id="ach-modal-close-x" class="ach-modal-x" type="button" aria-label="Close">✕</button>
+        <div class="ach-modal-medal" id="ach-modal-medal">
+          <span class="ach-modal-icon gi gi-flag" id="ach-modal-icon" aria-hidden="true"></span>
+        </div>
+        <div class="ach-modal-name" id="ach-modal-name"></div>
+        <div class="ach-modal-desc" id="ach-modal-desc"></div>
+        <div class="ach-modal-progress" id="ach-modal-progress"></div>
+        <div class="ach-modal-reward" id="ach-modal-reward"></div>
+        <button id="ach-modal-collect" class="tap-btn hidden" type="button">
+          <span class="tap-btn-inner" data-i18n="achievements.collect">TOPLA</span>
+        </button>
+        <div class="ach-modal-status hidden" id="ach-modal-status"></div>
+      </div>
+    </div>
+
+    <div id="pause-overlay" class="pause-overlay hidden" role="dialog" aria-modal="true">
+      <div class="pause-dialog">
+        <div class="pause-title" data-i18n="pause.title">DURAKLATILDI</div>
+        <div class="pause-actions">
+          <button id="pause-resume-btn" class="tap-btn">
+            <span class="tap-btn-inner" data-i18n="pause.resume">DEVAM ET</span>
+          </button>
+          <div class="pause-btn-wrap">
+            <button id="pause-upgrades-btn" class="ghost-btn pause-upg-btn" type="button" data-i18n="upgrades.title">GELISIM</button>
+            <span class="upg-btn-badge hidden" id="pause-upgrades-badge"></span>
+          </div>
+          <div class="pause-btn-wrap">
+            <button id="pause-achievements-btn" class="ghost-btn" type="button" data-i18n="achievements.title">BASARIMLAR</button>
+            <span class="corner-badge hidden" id="pause-achievements-badge"></span>
+          </div>
+          <button id="pause-settings-btn" class="ghost-btn" type="button" data-i18n="pause.settings">AYARLAR</button>
+          <button id="pause-home-btn" class="ghost-btn" type="button" data-i18n="pause.home">ANA MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirm-overlay" class="confirm-overlay hidden" role="dialog" aria-modal="true">
+      <div class="confirm-dialog">
+        <div class="confirm-msg" data-i18n="settings.reset_confirm">Var olan butun ilerlemeniz sifirlanacak. Emin misiniz?</div>
+        <div class="confirm-type">
+          <label class="confirm-prompt" id="confirm-prompt" for="confirm-input"></label>
+          <input id="confirm-input" class="confirm-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        </div>
+        <div class="confirm-actions">
+          <button id="confirm-no" class="ghost-btn" type="button" data-i18n="settings.no">HAYIR</button>
+          <button id="confirm-yes" class="danger-btn" type="button" data-i18n="settings.yes" disabled>EVET</button>
+        </div>
+      </div>
+    </div>
+   </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+      "@capacitor/core": "./vendor/@capacitor/core/index.js"
+    }
+  }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+{
+  "app": {
+    "title": "Panthop - One Tap"
+  },
+  "start": {
+    "title_main": "PANT",
+    "title_accent": "HOP",
+    "tagline": "Climb to the top with Pantho the panther cub, clearing every obstacle",
+    "best_label": "HIGH SCORE",
+    "recent_label": "Recent scores",
+    "high_label": "Best scores",
+    "recent_empty": "no scores yet - be the first run",
+    "btn": "PLAY",
+    "btn_hint": "tap the screen",
+    "upgrades_btn": "UPGRADES"
+  },
+  "gameover": {
+    "title": "GAME OVER",
+    "score_label": "SCORE",
+    "best_label": "BEST",
+    "new_best": "NEW BEST",
+    "retry": "CONTINUE",
+    "home": "HOME",
+    "milestone_label": "MILESTONE",
+    "achievement_unlocked": "ACHIEVEMENT UNLOCKED",
+    "view_achievement": "VIEW ACHIEVEMENT",
+    "milestone_first": "FIRST {n}!",
+    "leaf_label": "LEAVES COLLECTED",
+    "feather_label": "FEATHERS COLLECTED",
+    "collected_label": "COLLECTED",
+    "earned_label": "EARNED",
+    "earned_mult": "x{mult}",
+    "total_label": "WALLET",
+    "upg_available": "UPGRADE AVAILABLE",
+    "reward_2x": "WATCH: 2X BARK",
+    "reward_2x_done": "BARK DOUBLED",
+    "compare_up": "+{n} from last run",
+    "compare_down": "-{n} from last run",
+    "compare_same": "same as last run",
+    "ratio_of_best": "{pct}% of best"
+  },
+  "lang": {
+    "name": "English",
+    "switch_to": "TR"
+  },
+  "pause": {
+    "title": "PAUSED",
+    "resume": "RESUME",
+    "settings": "SETTINGS",
+    "home": "MAIN MENU"
+  },
+  "settings": {
+    "title": "SETTINGS",
+    "language": "LANGUAGE",
+    "sound": "SOUND",
+    "sfx": "EFFECTS",
+    "music": "MUSIC",
+    "ambient": "AMBIENCE",
+    "data": "DATA",
+    "reset": "RESET PROGRESS",
+    "reset_hint": "Scores, tree bark, leaves and all upgrades are permanently erased.",
+    "reset_confirm": "All of your current progress will be reset. Are you sure?",
+    "reset_type": "Type '{word}' below to confirm",
+    "yes": "YES",
+    "no": "NO",
+    "back": "BACK"
+  },
+  "upgrades": {
+    "title": "UPGRADES",
+    "back": "BACK",
+    "level": "LEVEL",
+    "max_level": "MAX",
+    "active_label": "ACTIVE",
+    "active_note": "Active",
+    "buy_label": "BUY",
+    "now_label": "Now",
+    "next_label": "Next",
+    "owned_none": "Not owned yet",
+    "maxed_note": "Fully upgraded",
+    "locked_note": "Unlock Sprint first",
+    "section_coin": "TREE BARK",
+    "section_leaf": "LEAVES / SPRINT",
+    "tab_coin": "Bark",
+    "tab_leaf": "Sprint",
+    "tab_feather": "Feather",
+    "tab_locked": "Unlocked by Sharpened Claw",
+    "new_badge": "NEW",
+    "warm_start": {
+      "name": "Calm",
+      "tagline": "Eases the opening pace so the first seconds feel calmer.",
+      "effect": "-{pct}% starting climb speed"
+    },
+    "coin_mult": {
+      "name": "Bark Pile",
+      "tagline": "Boosts the tree bark collected at the end of each run.",
+      "effect": "x{mult} collected bark (+{pct}%)"
+    },
+    "air_strike": {
+      "name": "Sharpened Claw",
+      "tagline": "Swipes sharp claws that shred mid-air obstacles on contact.",
+      "effect": "{n} claw swipes per run"
+    },
+    "sprint": {
+      "name": "Sprint",
+      "tagline": "Hold to charge into a fast climb, release for a powered jump.",
+      "effect": "Hold to sprint"
+    },
+    "sprint_speed": {
+      "name": "Focus",
+      "tagline": "The more you focus, the sooner the sprint kicks in - you start running faster.",
+      "effect": "starts running in {sec}s"
+    },
+    "sprint_bonus": {
+      "name": "Sprint Bonus",
+      "tagline": "Jumps launched mid-sprint score extra points.",
+      "effect": "+{n} score on sprint jump"
+    },
+    "sprint_smash": {
+      "name": "Claw Hone",
+      "tagline": "A sprint jump shatters mid-air obstacles on contact.",
+      "effect": "Sprint jump smashes obstacles"
+    },
+    "feather_luck": {
+      "name": "Lucky Feather",
+      "tagline": "Each bird you smash has a chance to drop a feather; this raises that chance.",
+      "effect": "{pct}% feather drop chance"
+    },
+    "dodge": {
+      "name": "Dodge",
+      "tagline": "Hit a branch and you spend a dodge charge to slip past instead of dying.",
+      "effect": "Active - {n} dodges per run"
+    },
+    "dodge_count": {
+      "name": "Extra Dodges",
+      "tagline": "Increases how many dodge charges you start each run with.",
+      "effect": "{n} dodges per run"
+    }
+  },
+  "achievements": {
+    "title": "ACHIEVEMENTS",
+    "back": "BACK",
+    "group_milestone": "CLIMB",
+    "group_smash": "SMASH",
+    "group_runs": "RUNS",
+    "group_jumps": "JUMPS",
+    "reward_label": "REWARD",
+    "collect": "COLLECT",
+    "locked": "LOCKED",
+    "collected": "COLLECTED",
+    "unlocked": "UNLOCKED",
+    "progress": "{cur} / {tgt}",
+    "milestone_name": "First {n}",
+    "milestone_desc": "Reach {n} score in a single run.",
+    "smash_name": "{n} Obstacles",
+    "smash_desc": "Smash {n} obstacles in total.",
+    "runs_name": "{n} Runs",
+    "runs_desc": "Play {n} runs in total.",
+    "jumps_name": "{n} Jumps",
+    "jumps_desc": "Jump {n} times in total.",
+    "empty": "No achievements yet"
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "app": {
+    "title": "Panthop - Tek Tus"
+  },
+  "start": {
+    "title_main": "PANT",
+    "title_accent": "HOP",
+    "tagline": "Yavru panther Pantho ile engelleri as, en yukari tirman",
+    "best_label": "EN YUKSEK",
+    "recent_label": "Son skorlar",
+    "high_label": "En yuksek",
+    "recent_empty": "henuz skor yok - ilk denemen olsun",
+    "btn": "OYNA",
+    "btn_hint": "ekrana dokun",
+    "upgrades_btn": "GELISIM"
+  },
+  "gameover": {
+    "title": "OYUN BITTI",
+    "score_label": "SKOR",
+    "best_label": "REKOR",
+    "new_best": "YENI REKOR",
+    "retry": "DEVAM",
+    "home": "ANA MENU",
+    "milestone_label": "KILOMETRE TASI",
+    "achievement_unlocked": "BASARIM ACILDI",
+    "view_achievement": "BASARIMI AC",
+    "milestone_first": "ILK {n}!",
+    "leaf_label": "TOPLANAN YAPRAK",
+    "feather_label": "TOPLANAN TUY",
+    "collected_label": "TOPLANAN",
+    "earned_label": "KAZANILAN",
+    "earned_mult": "x{mult}",
+    "total_label": "CUZDAN",
+    "upg_available": "GELISIM ALINABILIR",
+    "reward_2x": "IZLE: KABUK X2",
+    "reward_2x_done": "KABUK 2 KATINA CIKTI",
+    "compare_up": "+{n} onceki rundan",
+    "compare_down": "-{n} onceki rundan",
+    "compare_same": "onceki runla ayni",
+    "ratio_of_best": "rekorun %{pct}'i"
+  },
+  "lang": {
+    "name": "Turkce",
+    "switch_to": "EN"
+  },
+  "pause": {
+    "title": "DURAKLATILDI",
+    "resume": "DEVAM ET",
+    "settings": "AYARLAR",
+    "home": "ANA MENU"
+  },
+  "settings": {
+    "title": "AYARLAR",
+    "language": "DIL",
+    "sound": "SES",
+    "sfx": "EFEKTLER",
+    "music": "MUZIK",
+    "ambient": "AMBIYANS",
+    "data": "VERILER",
+    "reset": "ILERLEMEYI SIFIRLA",
+    "reset_hint": "Skorlar, agac kabugu, yaprak ve tum gelismeler kalici olarak silinir.",
+    "reset_confirm": "Var olan butun ilerlemeniz sifirlanacak. Emin misiniz?",
+    "reset_type": "Onaylamak icin asagiya '{word}' yazin",
+    "yes": "EVET",
+    "no": "HAYIR",
+    "back": "GERI"
+  },
+  "upgrades": {
+    "title": "GELISIM",
+    "back": "GERI",
+    "level": "SEVIYE",
+    "max_level": "TAVAN",
+    "active_label": "AKTIF",
+    "active_note": "Aktif",
+    "buy_label": "AL",
+    "now_label": "Su an",
+    "next_label": "Sonraki",
+    "owned_none": "Henuz alinmadi",
+    "maxed_note": "Tamamen gelistirildi",
+    "locked_note": "Once Sprint'i ac",
+    "section_coin": "AGAC KABUGU",
+    "section_leaf": "YAPRAK / SPRINT",
+    "tab_coin": "Kabuk",
+    "tab_leaf": "Sprint",
+    "tab_feather": "Tuy",
+    "tab_locked": "Bilenmis Pence ile acilir",
+    "new_badge": "YENI",
+    "warm_start": {
+      "name": "Sakinlik",
+      "tagline": "Acilis temposunu yumusatir, ilk saniyeler daha sakin gecer.",
+      "effect": "-%{pct} baslangic tirmanis hizi"
+    },
+    "coin_mult": {
+      "name": "Kabuk Yigini",
+      "tagline": "Her run sonunda toplanan agac kabugu miktarini artirir.",
+      "effect": "x{mult} toplanan kabuk (+%{pct})"
+    },
+    "air_strike": {
+      "name": "Bilenmis Pence",
+      "tagline": "Havadaki engelleri degdigi an parcalayan keskin pence darbeleri savurur.",
+      "effect": "run basina {n} pence darbesi"
+    },
+    "sprint": {
+      "name": "Sprint",
+      "tagline": "Basili tutunca sarj olup hizlanir, birakinca guclu bir ziplama yaparsin.",
+      "effect": "Basili tutarak sprint"
+    },
+    "sprint_speed": {
+      "name": "Odaklanma",
+      "tagline": "Odaklandikca sprint daha erken devreye girer; daha kisa surede kosmaya baslarsin.",
+      "effect": "{sec} sn'de kosuya gecer"
+    },
+    "sprint_bonus": {
+      "name": "Sprint Primi",
+      "tagline": "Sprint sirasinda atilan ziplamalar ekstra skor kazandirir.",
+      "effect": "Sprint ziplamada +{n} skor"
+    },
+    "sprint_smash": {
+      "name": "Pence Bileme",
+      "tagline": "Sprint ziplamasi havadaki engelleri carptigi an paramparca eder.",
+      "effect": "Sprint ziplamasi engelleri parcalar"
+    },
+    "feather_luck": {
+      "name": "Sansli Tuy",
+      "tagline": "Oldurdugun her kus belli bir ihtimalle tuy dusurur; bu ihtimali artirir.",
+      "effect": "%{pct} tuy dusurme sansi"
+    },
+    "dodge": {
+      "name": "Kacis",
+      "tagline": "Bir dala carptiginda bir kacis hakki harcayip olmek yerine yoluna devam edersin.",
+      "effect": "Aktif - run basina {n} kacis"
+    },
+    "dodge_count": {
+      "name": "Ekstra Kacis",
+      "tagline": "Her run baslangicindaki kacis hakki sayisini artirir.",
+      "effect": "run basina {n} kacis"
+    }
+  },
+  "achievements": {
+    "title": "BASARIMLAR",
+    "back": "GERI",
+    "group_milestone": "TIRMANIS",
+    "group_smash": "PARCALAMA",
+    "group_runs": "TURLAR",
+    "group_jumps": "ZIPLAMALAR",
+    "reward_label": "ODUL",
+    "collect": "TOPLA",
+    "locked": "KILITLI",
+    "collected": "TOPLANDI",
+    "unlocked": "ACILDI",
+    "progress": "{cur} / {tgt}",
+    "milestone_name": "Ilk {n}",
+    "milestone_desc": "Tek bir kosuda {n} skora ulas.",
+    "smash_name": "{n} Engel",
+    "smash_desc": "Toplam {n} engeli parcala.",
+    "runs_name": "{n} Tur",
+    "runs_desc": "Toplam {n} tur oyna.",
+    "jumps_name": "{n} Ziplama",
+    "jumps_desc": "Toplam {n} kez zipla.",
+    "empty": "Henuz basarim yok"
+  }
+}

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Para birimi ikonlari — onizleme</title>
+<style>
+  body { margin:0; background:#0c241a; color:#cfe8d8; font-family:system-ui,sans-serif; padding:28px; }
+  h1 { font-size:16px; letter-spacing:.1em; color:#9be86f; }
+  .gi { display:inline-block; background-size:contain; background-repeat:no-repeat; background-position:center; image-rendering:pixelated; vertical-align:middle; }
+  .gi-bark    { background-image:url(bark.svg); }
+  .gi-leaf    { background-image:url(leaf.svg); }
+  .gi-feather { background-image:url(feather.svg); }
+  table { border-collapse:collapse; margin:18px 0 34px; }
+  td, th { padding:10px 18px; text-align:center; border-bottom:1px solid #1d3a2c; }
+  th { color:#7fae93; font-weight:600; font-size:13px; }
+  .name { color:#cfe8d8; font-size:13px; }
+  .emoji { font-size:32px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; background:#13301f; border:2px solid #235138;
+          padding:8px 14px; border-radius:10px; font-size:22px; font-weight:700; color:#eafff0; margin:6px; }
+  .chips { margin-top:8px; }
+  .lbl { font-size:12px; color:#7fae93; margin-top:24px; }
+</style>
+</head>
+<body>
+  <h1>PARA BIRIMI IKONLARI — PIXEL-ART (onay icin)</h1>
+
+  <div class="lbl">Boyutlara gore (uygulamada ~16-24px kullanilir):</div>
+  <table>
+    <tr><th></th><th>16px</th><th>24px</th><th>32px</th><th>48px</th><th>eski emoji</th></tr>
+    <tr>
+      <td class="name">kabuk<br>(bark)</td>
+      <td><span class="gi gi-bark" style="width:16px;height:16px"></span></td>
+      <td><span class="gi gi-bark" style="width:24px;height:24px"></span></td>
+      <td><span class="gi gi-bark" style="width:32px;height:32px"></span></td>
+      <td><span class="gi gi-bark" style="width:48px;height:48px"></span></td>
+      <td class="emoji">🪵</td>
+    </tr>
+    <tr>
+      <td class="name">yaprak<br>(leaf)</td>
+      <td><span class="gi gi-leaf" style="width:16px;height:16px"></span></td>
+      <td><span class="gi gi-leaf" style="width:24px;height:24px"></span></td>
+      <td><span class="gi gi-leaf" style="width:32px;height:32px"></span></td>
+      <td><span class="gi gi-leaf" style="width:48px;height:48px"></span></td>
+      <td class="emoji">🍃</td>
+    </tr>
+    <tr>
+      <td class="name">tuy<br>(feather)</td>
+      <td><span class="gi gi-feather" style="width:16px;height:16px"></span></td>
+      <td><span class="gi gi-feather" style="width:24px;height:24px"></span></td>
+      <td><span class="gi gi-feather" style="width:32px;height:32px"></span></td>
+      <td><span class="gi gi-feather" style="width:48px;height:48px"></span></td>
+      <td class="emoji">🪶</td>
+    </tr>
+  </table>
+
+  <div class="lbl">Cuzdan / odul baglaminda (ikon + sayi):</div>
+  <div class="chips">
+    <span class="chip"><span class="gi gi-bark" style="width:22px;height:22px"></span>1240</span>
+    <span class="chip"><span class="gi gi-leaf" style="width:22px;height:22px"></span>37</span>
+    <span class="chip"><span class="gi gi-feather" style="width:22px;height:22px"></span>12</span>
+  </div>
+</body>
+</html>
