@@ -55,7 +55,15 @@ Seçimler:
 - [ ] **4.5** İlk APK build — Android Studio'da aç (`npm run cap:open:android`), Gradle sync, Run
 - [ ] **4.6** (Opsiyonel) Haptics plugin'i Vibration API yerine geçir
 - [x] **4.7** Release imzalama notları → [BUILD.md](BUILD.md)
-- [ ] **4.8** (Opsiyonel) iOS platformu
+- [ ] **4.8** iOS platformu — hazırlık tamam (2026-07-08):
+  - [x] Node 22 kuruldu (`~/.local/node`, sudo'suz), `dist/` derleniyor
+  - [x] `js/services/providers/gamecenter.js` (Game Center provider; gerçek achievement ID'leri TODO)
+  - [x] `capacitor.config.ts` iOS bölümü (contentInset: never, scrollEnabled: false)
+  - [x] `tools/setup-ios.sh` + `tools/patch-ios-plist.sh` (`npm run ios:setup`)
+  - [ ] Xcode kurulunca: `npm run ios:setup` çalıştır (CocoaPods + cap add ios + plist + assets + sync)
+  - [ ] Xcode'da: Team seç, Game Center capability ekle
+  - [ ] AdMob konsolunda iOS uygulaması oluştur → gerçek `GADApplicationIdentifier`
+  - [ ] App Store Connect: uygulama kaydı, Game Center achievement'ları, gizlilik etiketi
 
 ## Faz 5 — Test & Doğrulama
 

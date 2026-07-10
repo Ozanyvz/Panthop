@@ -77,7 +77,39 @@ export function setAnimFrame(anim, i) {
   anim.texture.offset.y = 1 - (row + 1) * anim.fh + anim.epsV;
 }
 
-/* ---------- Wall: pixel-art tree-trunk bark (tileable vertically) ----------
+/* Shared loader for the tree art pieces cropped out of assets/tree.png. */
+function loadPixelAsset(file, { mirrorY = false, flipX = false } = {}) {
+  const url = new URL(`../assets/${file}`, import.meta.url).href;
+  const tex = new THREE.TextureLoader().load(url);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.anisotropy = 1;
+  tex.wrapS = THREE.RepeatWrapping;
+  // Mirrored vertical wrap makes a non-tileable strip seamless when repeated.
+  tex.wrapT = mirrorY ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
+  if (flipX) { tex.repeat.x = -1; tex.offset.x = 1; }
+  return tex;
+}
+
+/* ---------- Wall: trunk strip cropped from the tree art (tiles vertically) ---------- */
+export function loadWallTexture() {
+  return loadPixelAsset('tree-trunk.png', { mirrorY: true });
+}
+
+/* ---------- Wall Obstacle: branch cropped from the tree art ----------
+   The art points RIGHT (grows off the left wall); flipped for the right wall. */
+export function loadBranchTexture(pointingRight) {
+  return loadPixelAsset('tree-branch.png', { flipX: !pointingRight });
+}
+
+/* ---------- Wall base: root flare + grass from the tree art ---------- */
+export function loadRootTexture(flipX = false) {
+  return loadPixelAsset('tree-root.png', { flipX });
+}
+
+/* ---------- Wall: pixel-art tree-trunk bark (procedural fallback, unused) ----------
    Low-res (POT 32×64 so RepeatWrapping is safe) and nearest-filtered. Bark is
    built from full-height columns so the top/bottom edges always meet seamlessly. */
 export function makeWallTexture() {
@@ -87,31 +119,49 @@ export function makeWallTexture() {
   const g = c.getContext('2d');
   g.imageSmoothingEnabled = false;
 
-  // Full-height bark columns — warm, saturated wood with bright highlights
-  const shades = ['#7a4420', '#9a5a2a', '#b87238', '#d08a44', '#e0a256'];
+  // Full-height bark columns — rich red-brown wood (reference: big pixel-art
+  // redwood): mostly mid tones, ridged by regular dark grooves and the
+  // occasional sunlit ridge.
+  const shades = ['#4a2517', '#57301c', '#653821', '#714026', '#7d482a'];
   for (let x = 0; x < w; x++) {
     g.fillStyle = shades[(Math.random() * shades.length) | 0];
     g.fillRect(x, 0, 1, h);
+    if (x % 4 === 3) {                       // groove between bark ridges
+      g.fillStyle = 'rgba(38,17,9,0.8)';
+      g.fillRect(x, 0, 1, h);
+    } else if (Math.random() < 0.12) {       // sunlit ridge edge
+      g.fillStyle = '#96613a';
+      g.fillRect(x, 0, 1, h);
+    }
   }
 
   // Darker / lighter grain streaks — full height, so they tile too
-  for (let i = 0; i < 11; i++) {
+  for (let i = 0; i < 9; i++) {
     const x = (Math.random() * w) | 0;
-    g.fillStyle = Math.random() < 0.58 ? 'rgba(74,38,14,0.55)' : 'rgba(255,206,130,0.45)';
+    g.fillStyle = Math.random() < 0.6 ? 'rgba(30,14,7,0.55)' : 'rgba(160,104,60,0.4)';
     g.fillRect(x, 0, 1, h);
   }
 
-  // Knots — kept clear of the top/bottom seam, ringed with a warm amber halo
+  // Knots — kept clear of the top/bottom seam, ringed light-over-dark
   for (let i = 0; i < 3; i++) {
     const kx = 3 + ((Math.random() * (w - 9)) | 0);
     const ky = 8 + ((Math.random() * (h - 20)) | 0);
-    g.fillStyle = 'rgba(224,162,86,0.6)';
+    g.fillStyle = 'rgba(150,97,58,0.55)';
     g.fillRect(kx - 1, ky - 1, 6, 7);
-    g.fillStyle = '#6e3a18';
+    g.fillStyle = '#3f2113';
     g.fillRect(kx, ky, 4, 5);
-    g.fillStyle = '#3a1d0c';
+    g.fillStyle = '#1d0d06';
     g.fillRect(kx + 1, ky + 1, 2, 2);
   }
+
+  // Trunk outline on both edges (the same texture serves the left and right
+  // wall) — the dark rim reads as the tree's silhouette against the gap.
+  g.fillStyle = '#1d0d06';
+  g.fillRect(0, 0, 1, h);
+  g.fillRect(w - 1, 0, 1, h);
+  g.fillStyle = 'rgba(38,17,9,0.75)';
+  g.fillRect(1, 0, 1, h);
+  g.fillRect(w - 2, 0, 1, h);
 
   const tex = pixelTexture(c);
   tex.wrapS = THREE.RepeatWrapping;
@@ -133,26 +183,51 @@ export function makeWallSpikeTexture(pointingRight) {
   g.save();
   if (!pointingRight) { g.translate(w, 0); g.scale(-1, 1); }
 
-  // Main limb (dark base, mid body, top hilite) — warm saturated wood
-  r(1, 7, 21, 5, '#6e3a18');
-  r(1, 7, 21, 3, '#a05f2c');
-  r(1, 7, 21, 1, '#d08a44');
-  // Taper toward the tip
-  r(22, 8, 4, 3, '#6e3a18');
-  r(22, 8, 4, 1, '#a05f2c');
-  // Sharp broken tip (the dangerous end)
-  r(26, 9, 3, 1, '#4a2410');
-  r(29, 9, 1, 1, '#4a2410');
+  // Reference-style chunky limb: dark outline, red-brown body, lit top edge,
+  // thick at the trunk and tapering to a broken tip.
+  const OUT = '#2b140c';   // outline / broken tip
+  const DK = '#5d3220';    // underside shadow
+  const MID = '#8a4a2b';   // body wood
+  const LT = '#b06a38';    // upper body
+  const HI = '#c98a4e';    // sunlit top edge
+  const LF1 = '#2c6e34', LF2 = '#4c9440', LF3 = '#66b04c';   // foliage
+
+  // Outline pass (stepped taper)
+  r(0, 6, 10, 8, OUT);
+  r(10, 7, 8, 6, OUT);
+  r(18, 8, 6, 4, OUT);
+  r(24, 9, 5, 2, OUT);
+  // Wood fill, one pixel inside the outline
+  r(1, 7, 9, 6, MID);
+  r(10, 8, 8, 4, MID);
+  r(18, 9, 6, 2, MID);
+  // Lit top edge + upper body
+  r(1, 7, 9, 2, LT);
+  r(1, 7, 9, 1, HI);
+  r(10, 8, 8, 1, LT);
+  r(18, 9, 6, 1, LT);
+  // Underside shadow
+  r(1, 12, 9, 1, DK);
+  r(10, 11, 8, 1, DK);
+  r(18, 10, 6, 1, DK);
+  // Broken tip (the dangerous end)
+  r(24, 9, 4, 1, DK);
+  r(28, 9, 2, 1, OUT);
+  // Snapped-off upward stub near the trunk (reference branches)
+  r(4, 3, 3, 4, OUT);
+  r(5, 4, 1, 3, MID);
+  // Knot on the base
+  r(2, 9, 3, 3, DK);
+  r(3, 10, 1, 1, OUT);
   // Bark grain notches
-  r(7, 8, 1, 3, 'rgba(60,29,12,0.5)');
-  r(14, 8, 1, 3, 'rgba(60,29,12,0.5)');
-  // Twig + leaves — vivid foliage greens
-  r(10, 4, 1, 3, '#a05f2c');
-  r(11, 3, 1, 2, '#a05f2c');
-  r(11, 1, 3, 2, '#4fd055');
-  r(12, 2, 1, 1, '#2faa42');
-  r(7, 12, 3, 2, '#4fd055');
-  r(8, 13, 1, 1, '#2faa42');
+  r(8, 9, 1, 3, 'rgba(43,20,12,0.5)');
+  r(14, 9, 1, 2, 'rgba(43,20,12,0.5)');
+  // Foliage: cluster over the stub + a small tuft under the limb
+  r(2, 0, 8, 3, LF1);
+  r(3, 0, 6, 2, LF2);
+  r(4, 0, 3, 1, LF3);
+  r(12, 13, 4, 2, LF1);
+  r(13, 13, 2, 1, LF2);
 
   g.restore();
   return pixelTexture(c);
@@ -251,7 +326,24 @@ export function makeBackgroundTexture() {
   return tex;
 }
 
-/* ---------- Floor / ground at bottom (pixel-art) ---------- */
+/* ---------- Floor / ground: hand-made pixel-art asset ----------
+   assets/grassground.png (1100x830, watermark/borders cropped, blade tips
+   alpha-keyed against the sky). Mirrored horizontal wrap hides the seam when
+   the band tiles across the view. */
+export function loadGroundTexture() {
+  const url = new URL('../assets/grassground.png', import.meta.url).href;
+  const tex = new THREE.TextureLoader().load(url);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.anisotropy = 1;
+  tex.wrapS = THREE.MirroredRepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+/* ---------- Floor / ground at bottom (procedural fallback, unused) ---------- */
 export function makeGroundTexture() {
   const w = 64;
   const h = 24;

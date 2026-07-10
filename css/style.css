@@ -201,7 +201,7 @@ html, body {
 
 .best-card {
   text-align: center;
-  padding: 14px 28px;
+  padding: 10px 24px;
   background: var(--card);
   border: 1px solid var(--card-br);
   border-radius: 18px;
@@ -217,7 +217,7 @@ html, body {
 }
 
 .best-value {
-  font-size: 38px;
+  font-size: 32px;
   font-weight: 900;
   color: var(--accent);
   line-height: 1;
@@ -227,7 +227,8 @@ html, body {
 .recent-card {
   width: 100%;
   max-width: 340px;
-  padding: 14px 18px;
+  margin: 12px 0;   /* breathing room from the best card above and the chips below */
+  padding: 10px 14px;
   background: var(--card);
   border: 1px solid var(--card-br);
   border-radius: 16px;
@@ -237,14 +238,14 @@ html, body {
 .score-tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .score-tab {
   flex: 1 1 0;
   appearance: none;
   border: none;
   cursor: pointer;
-  padding: 7px 8px;
+  padding: 5px 8px;
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-dim);
@@ -264,7 +265,7 @@ html, body {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .recent-list li {
@@ -272,7 +273,7 @@ html, body {
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -631,6 +632,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;   /* the cards column scrolls instead; the header stays put */
 }
 .go-head .go-title { margin-top: 0; }
 .go-wallet {
@@ -693,7 +695,14 @@ html, body {
   gap: 12px;
   width: 100%;
   max-width: 360px;
+  /* When every card is staged at once (milestone + collected + reward + upgrade)
+     the column can outgrow a phone screen; scroll the cards internally so the
+     retry/home block below never gets pushed off-screen. */
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+.go-cards::-webkit-scrollbar { display: none; }
 
 /* Cards stay invisible until the staged reveal adds .shown (driven from JS).
    They fade in where they already sit — no slide — so the layout never shifts. */
@@ -706,7 +715,11 @@ html, body {
   opacity: 0;
 }
 
-.go-card.shown { animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards; }
+/* .shown sets opacity directly as well: WebKit won't replay a forwards-fill
+   animation whose class was toggled while the screen was display:none (second
+   game over), which left cards/buttons stuck invisible. The animation is only
+   the fade-in polish; visibility must never depend on it. */
+.go-card.shown { opacity: 1; animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards; }
 
 .upg-available {
   appearance: none;
@@ -735,6 +748,7 @@ html, body {
 }
 
 .upg-available.shown {
+  opacity: 1;
   pointer-events: auto;
   animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards,
              upgPulse 1.6s ease-in-out 0.6s infinite;
@@ -797,6 +811,7 @@ html, body {
 }
 
 .reward-2x.shown {
+  opacity: 1;
   pointer-events: auto;
   animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards,
              reward2xPulse 1.6s ease-in-out 0.6s infinite;
@@ -1099,10 +1114,12 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 14px;
+  flex-shrink: 0;   /* the cards column scrolls instead; these stay on screen */
   opacity: 0;
   pointer-events: none;   /* buttons can't be tapped while invisible */
 }
 .go-actions.shown {
+  opacity: 1;
   pointer-events: auto;
   animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards;
 }
@@ -1112,7 +1129,7 @@ html, body {
 #bark-row,
 #feather-row { opacity: 0; }
 #bark-row.shown,
-#feather-row.shown { animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards; }
+#feather-row.shown { opacity: 1; animation: cardIn 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) forwards; }
 
 /* Collected frame — this run's bark + feather gains, counted up as "+N" */
 .collected-rows {
@@ -1540,6 +1557,12 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  margin-top: 10px;   /* keep OYNA clear of the GELISIM row above */
+}
+
+/* Let OYNA sit a touch lower on the start screen. */
+#start-screen {
+  padding-bottom: calc(22px + var(--safe-bot));
 }
 
 /* Materials (currency chips) + the upgrades button grouped together — you spend
@@ -1670,6 +1693,7 @@ html, body {
 }
 
 .upg-item {
+  cursor: pointer;   /* the card itself opens the info modal */
   background: var(--card);
   border: 1px solid var(--card-br);
   border-radius: 16px;
@@ -1708,12 +1732,18 @@ html, body {
   letter-spacing: 0.04em;
 }
 
-.upg-desc {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-dim);
-  margin-top: 2px;
-  line-height: 1.3;
+/* Upgrade info modal (tap a card): reuses the achievement-modal dialog shell,
+   only the icon badge is its own — a bigger version of the list's .upg-icon. */
+.upg-modal-icon {
+  width: 54px;
+  height: 54px;
+  margin: 2px auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 26px;
 }
 
 .upg-stats {
@@ -2476,17 +2506,16 @@ html, body {
    Declared last → wins over the original per-element sizes. */
 .tagline { font-size: 17px; }
 .score-tab { font-size: 14px; }
-.recent-list li { font-size: 19px; }
-.recent-list li .rank { font-size: 15px; }
-.recent-mats .rmat { font-size: 16px; }
-.recent-list .empty { font-size: 16px; }
+.recent-list li { font-size: 17px; }
+.recent-list li .rank { font-size: 13px; }
+.recent-mats .rmat { font-size: 14px; }
+.recent-list .empty { font-size: 15px; }
 
 .ghost-btn { font-size: 17px; }
 .upgrades-btn { font-size: 15px; }
 .ach-menu-btn { font-size: 20px; }
 
 .upg-name { font-size: 19px; }
-.upg-desc { font-size: 15px; }
 .upg-stat { font-size: 13px; }
 .upg-stat-label { font-size: 12px; }
 .upg-level-text { font-size: 14px; }

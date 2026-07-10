@@ -70,24 +70,38 @@ Android Studio → Build → Generate Signed Bundle / APK → Release variant.
 1. **Apple Developer Program** üyeliği ($99/yıl): https://developer.apple.com/programs/enroll/
    - Bireysel kayıt: gerçek ad-soyad, 2FA açık Apple hesabı; onay ~24-48 saat
 2. **Xcode** (App Store'dan) + ilk açılışta iOS platform bileşenleri
-3. **Node 20+** ve **CocoaPods**: `sudo gem install cocoapods` (Apple Silicon'da `brew install cocoapods` daha sorunsuz)
-4. Projeyi taşı (git clone veya zip) → `npm install`
+3. **Node 22** bu Mac'te kurulu: `~/.local/node` (PATH `~/.zprofile`'da) — sudo'suz kurulum
+4. `npm install` yapıldı; CocoaPods'u aşağıdaki script kendisi kurar
 
-### iOS projesini ekle (tek sefer, Mac'te)
+### iOS projesini ekle (tek sefer, Mac'te — Xcode kurulduktan sonra)
 
 ```bash
-npm run cap:add:ios      # dist/ üretir, ios/ klasörü oluşturur
-npm run cap:assets:ios   # ikon + splash üretimi (assets/ kaynaklarından)
-npm run cap:open:ios     # Xcode'da açar
+npm run ios:setup
 ```
 
-Xcode'da (tek sefer):
+Bu script (`tools/setup-ios.sh`) sırasıyla: xcode-select doğrulama → CocoaPods
+kurulumu → `cap add ios` → `Info.plist` yaması (`tools/patch-ios-plist.sh`:
+AdMob TEST App ID, ATT metni, portre kilidi, SKAdNetworkItems) → iPhone-only
+hedef → ikon/splash üretimi → `cap sync`. Idempotent; yarıda kesilirse tekrar
+çalıştırılabilir.
+
+Notlar (2026-07-08'de bu Mac'te uygulandı):
+- Deployment target **iOS 15.0** — AdMob eklentisi (Google Mobile Ads SDK 12)
+  14.0'ı kabul etmiyor; script Podfile + pbxproj'u kendisi yükseltir.
+- CocoaPods sistem Ruby 2.6'ya `--user-install` ile kuruldu (sudo'suz);
+  Ruby 3 isteyen bağımlılıklar için script eski sürümleri sabitler.
+- Simülatör/derleme için iOS platform bileşeni gerekir:
+  `xcodebuild -downloadPlatform iOS` (veya Xcode → Settings → Components).
+
+Xcode'da kalan manuel adımlar (tek sefer):
 - **Signing & Capabilities** → Team seç (developer hesabın)
 - **+ Capability → Game Center** ekle (capacitor-game-connect-7 için)
-- `Info.plist`:
-  - `GADApplicationIdentifier` = AdMob **iOS** App ID (AdMob konsolunda ayrı iOS uygulaması oluştur — Android ID kullanılamaz)
-  - `SKAdNetworkItems` — AdMob dokümanındaki güncel liste: https://developers.google.com/admob/ios/quick-start
-  - `NSUserTrackingUsageDescription` — ATT izin metni (kişiselleştirilmiş reklam için; izinsiz de reklam çalışır, kişiselleştirilmemiş olur)
+- Gerçek **AdMob iOS App ID** alınca (AdMob konsolunda ayrı iOS uygulaması
+  oluştur — Android ID kullanılamaz): `tools/patch-ios-plist.sh` içindeki
+  `GAD_APP_ID`'yi değiştir, scripti tekrar çalıştır. O zamana dek Google'ın
+  resmî TEST App ID'si kullanılır.
+- Game Center achievement ID'leri →
+  `js/services/providers/gamecenter.js` içindeki `LOCAL_TO_GC` haritası
 
 ### Geliştirme döngüsü
 

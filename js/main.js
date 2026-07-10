@@ -134,6 +134,12 @@ const achModalReward = document.getElementById('ach-modal-reward');
 const achModalCollect = document.getElementById('ach-modal-collect');
 const achModalStatus = document.getElementById('ach-modal-status');
 const achModalCloseX = document.getElementById('ach-modal-close-x');
+// Upgrade info modal (tapping an upgrade card shows its description).
+const upgModalOverlay = document.getElementById('upg-modal-overlay');
+const upgModalIcon = document.getElementById('upg-modal-icon');
+const upgModalName = document.getElementById('upg-modal-name');
+const upgModalDesc = document.getElementById('upg-modal-desc');
+const upgModalCloseX = document.getElementById('upg-modal-close-x');
 // Achievements-screen wallet (top): current totals a collected reward ticks into.
 const awBarkVal = document.getElementById('aw-bark-val');
 const awBarkItem = document.getElementById('aw-bark');
@@ -926,7 +932,6 @@ function upgItemMarkup(def) {
     <div class="upg-icon">${def.icon}</div>
     <div class="upg-body">
       <div class="upg-name">${i18n.t(`${def.i18nKey}.name`)}</div>
-      <div class="upg-desc">${i18n.t(`${def.i18nKey}.tagline`)}</div>
       <div class="upg-stats">
         ${nowRow}
         ${nextRow}
@@ -952,6 +957,7 @@ function renderUpgradesList() {
     const { cls, html } = upgItemMarkup(def);
     const li = document.createElement('li');
     li.className = cls;
+    li.dataset.id = def.id;   // tapping the card opens its info modal
     li.innerHTML = html;
     upgListEl.appendChild(li);
   }
@@ -959,16 +965,40 @@ function renderUpgradesList() {
 
 upgListEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.upg-buy');
-  if (!btn || btn.disabled) return;
-  const id = btn.dataset.id;
-  const result = tryPurchase(id);
-  audio.sfx(result.ok ? 'purchase' : 'purchaseFail');
-  if (result.ok) {
-    vibrate(20);
-    refreshCoinDisplays();   // balances + reveal feather chip when the claw is bought
-    renderUpgTabs();         // unlock the feather tab / refresh availability badges
-    renderUpgradesList();    // reveal newly unlocked child upgrades
+  if (btn) {
+    if (btn.disabled) return;
+    const id = btn.dataset.id;
+    const result = tryPurchase(id);
+    audio.sfx(result.ok ? 'purchase' : 'purchaseFail');
+    if (result.ok) {
+      vibrate(20);
+      refreshCoinDisplays();   // balances + reveal feather chip when the claw is bought
+      renderUpgTabs();         // unlock the feather tab / refresh availability badges
+      renderUpgradesList();    // reveal newly unlocked child upgrades
+    }
+    return;
   }
+  // Anywhere else on the card: show the upgrade's description in the info modal.
+  const item = e.target.closest('.upg-item');
+  if (item?.dataset.id) openUpgModal(item.dataset.id);
+});
+
+/* ---------- Upgrade info modal ---------- */
+function openUpgModal(id) {
+  const def = UPGRADES.find(u => u.id === id);
+  if (!def) return;
+  upgModalIcon.innerHTML = def.icon;
+  upgModalName.textContent = i18n.t(`${def.i18nKey}.name`);
+  upgModalDesc.textContent = i18n.t(`${def.i18nKey}.tagline`);
+  show(upgModalOverlay);
+  audio.sfx('uiTap');
+}
+
+function closeUpgModal() { hide(upgModalOverlay); }
+
+upgModalCloseX?.addEventListener('click', closeUpgModal);
+upgModalOverlay?.addEventListener('click', (e) => {
+  if (e.target === upgModalOverlay) closeUpgModal();
 });
 
 /* ---------- Achievements screen ----------
@@ -1423,8 +1453,10 @@ reward2xBtn?.addEventListener('click', async () => {
   if (bonus <= 0) return;
   reward2xBtn.classList.add('is-busy');
 
+  audio.suspendForAd();   // pause music/ambience so the ad's sound plays alone
   const rewarded = await showRewarded();
   if (!rewarded) {
+    audio.resume();
     reward2xBtn.classList.remove('is-busy');   // user backed out / no fill — allow retry
     refreshRewardAd();
     return;
@@ -1539,6 +1571,7 @@ confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverla
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!confirmOverlay.classList.contains('hidden')) closeConfirm();
+  else if (!upgModalOverlay.classList.contains('hidden')) closeUpgModal();
   else if (!achModalOverlay.classList.contains('hidden')) closeAchModal();
   else if (!pauseOverlay.classList.contains('hidden')) resumeGame();
   else if (!achievementsScreen.classList.contains('hidden')) hideAchievementsScreen();

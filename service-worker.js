@@ -1,5 +1,5 @@
 /* Panthop service worker — app shell + i18n stale-while-revalidate */
-const VERSION = 'wj-v45';
+const VERSION = 'wj-v48';
 const SHELL_CACHE = `${VERSION}-shell`;
 const I18N_CACHE  = `${VERSION}-i18n`;
 const CDN_CACHE   = `${VERSION}-cdn`;

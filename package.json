@@ -11,6 +11,7 @@
     "build": "node tools/gen-icons.mjs && node tools/build.mjs",
     "cap:add:android": "npm run build && cap add android",
     "cap:add:ios": "npm run build && cap add ios",
+    "ios:setup": "./tools/setup-ios.sh",
     "cap:sync": "npm run build && cap sync",
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",

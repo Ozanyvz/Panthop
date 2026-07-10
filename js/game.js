@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import {
   loadCharacterAnimations,
   setAnimFrame,
-  makeWallTexture,
-  makeWallSpikeTexture,
+  loadWallTexture,
+  loadBranchTexture,
   makeSawTexture,
   makeBackgroundTexture,
-  makeGroundTexture,
+  loadGroundTexture,
 } from './sprites.js';
 import * as audio from './audio.js';
 
@@ -71,6 +71,7 @@ const WALL_SPIKE_OVERLAP = 0.22;
 /* camera follow: keep character ~35% from bottom */
 const CAM_FOLLOW_OFFSET = 2.0;
 const CAM_SMOOTH = 8.0;
+const CAM_INTRO_SMOOTH = 1.6;   // gentle glide from the intro framing to the follow target
 
 /* ---------- State machine ---------- */
 const STATE = {
@@ -155,12 +156,12 @@ export class PanthopGame {
   _initWorld() {
     // textures (generated once)
     this.tex = {
-      wall: makeWallTexture(),
-      spikeL: makeWallSpikeTexture(true),   // spikes point right (from left wall)
-      spikeR: makeWallSpikeTexture(false),  // spikes point left (from right wall)
+      wall: loadWallTexture(),
+      spikeL: loadBranchTexture(true),   // branch points right (from left wall)
+      spikeR: loadBranchTexture(false),  // branch points left (from right wall)
       saw: makeSawTexture(),
       bg: makeBackgroundTexture(),
-      ground: makeGroundTexture(),
+      ground: loadGroundTexture(),
     };
 
     // Use renderOrder to force painter's order — simpler & safer with orthographic sprites.
@@ -185,7 +186,11 @@ export class PanthopGame {
     // Ground (at bottom, below walls)
     {
       const geo = new THREE.PlaneGeometry(VIEW_WIDTH, 1.6);
-      const mat = new THREE.MeshBasicMaterial({ map: this.tex.ground, depthTest: false, depthWrite: false });
+      // Tile the art horizontally at its native aspect so the pixels stay square
+      // (mirrored wrap hides the tiling seam); alpha-keyed blade tips need
+      // transparency so the sky shows between them.
+      this.tex.ground.repeat.set((VIEW_WIDTH / 1.6) / (1100 / 830), 1);
+      const mat = new THREE.MeshBasicMaterial({ map: this.tex.ground, transparent: true, depthTest: false, depthWrite: false });
       const m = new THREE.Mesh(geo, mat);
       m.position.set(0, GROUND_Y - 0.2, -2);
       m.renderOrder = ro.ground;
@@ -194,10 +199,11 @@ export class PanthopGame {
     }
 
     // Solid earth fill below the ground so the sky never shows beneath it
+    // (colour matched to the grassground art's soil).
     {
       const fillH = 50;
       const geo = new THREE.PlaneGeometry(VIEW_WIDTH, fillH);
-      const mat = new THREE.MeshBasicMaterial({ color: 0x5e3a1c, depthTest: false, depthWrite: false });
+      const mat = new THREE.MeshBasicMaterial({ color: 0x8a5a30, depthTest: false, depthWrite: false });
       const m = new THREE.Mesh(geo, mat);
       // top tucked just under the grass line so its edge stays hidden behind the ground
       m.position.set(0, (GROUND_STAND_Y - 0.1) - fillH / 2, -2.5);
@@ -210,7 +216,9 @@ export class PanthopGame {
     const WALL_SEG_H = 60;              // visible wall segment height
     this.WALL_SEG_H = WALL_SEG_H;
     const wallGeo = new THREE.PlaneGeometry(WALL_THICKNESS, WALL_SEG_H);
-    this.tex.wall.repeat.set(1, WALL_SEG_H / 2);
+    // Tile height keeps the trunk art's pixels square: 1.2 wide × (140/76)·1.2 ≈ 2.2 tall.
+    this.WALL_TILE_H = 2.2;
+    this.tex.wall.repeat.set(1, WALL_SEG_H / this.WALL_TILE_H);
     this.tex.wall.needsUpdate = true;
     {
       const matL = new THREE.MeshBasicMaterial({ map: this.tex.wall });
@@ -229,6 +237,7 @@ export class PanthopGame {
       this.scene.add(wallR);
       this.wallR = wallR;
     }
+
     this._ro = ro;
 
     // Character — sprite-sheet animations (idle / walk / jump), one shared mesh.
@@ -329,7 +338,13 @@ export class PanthopGame {
     this.isStartJump = false;
     this.nextObstacleY = START_Y + 4;   // first obstacle comfortably above the first landing
     this.cameraTargetY = GROUND_STAND_Y + CAM_FOLLOW_OFFSET - 0.5;
-    this.camera.position.y = this.cameraTargetY;
+    // Intro framing: start with the camera raised just enough that the flat
+    // earth below the ground band stays offscreen; the first jump glides it
+    // down/over to the regular follow target (cameraTargetY).
+    const introY = (GROUND_Y - 1.0) + this.viewHalfH - 0.05;   // viewport bottom ≈ ground-band bottom
+    this.camIntro = introY > this.cameraTargetY;
+    this.camIntroGlide = false;
+    this.camera.position.y = this.camIntro ? introY : this.cameraTargetY;
     this._fitBackground();
 
     if (this.callbacks.onScore) this.callbacks.onScore(0);
@@ -394,6 +409,7 @@ export class PanthopGame {
   }
 
   _beginStartJump() {
+    this.camIntroGlide = true;   // first jump: ease the intro camera into follow mode
     // First jump: from ground center → left wall at a slightly higher y
     this.state = STATE.JUMP;
     this.jumpT = 0;
@@ -647,7 +663,14 @@ export class PanthopGame {
     const charTargetY = this.character.position.y + CAM_FOLLOW_OFFSET;
     if (charTargetY > this.cameraTargetY) this.cameraTargetY = charTargetY;
     const dy = this.cameraTargetY - this.camera.position.y;
-    this.camera.position.y += dy * Math.min(1, CAM_SMOOTH * dt);
+    if (this.camIntro && !this.camIntroGlide) {
+      // Hold the raised intro framing until the first jump.
+    } else if (this.camIntro) {
+      this.camera.position.y += dy * Math.min(1, CAM_INTRO_SMOOTH * dt);
+      if (Math.abs(this.cameraTargetY - this.camera.position.y) < 0.05) this.camIntro = false;
+    } else {
+      this.camera.position.y += dy * Math.min(1, CAM_SMOOTH * dt);
+    }
 
     // Parallax the background a bit (it follows camera, slower)
     this.bg.position.y = this.camera.position.y;
@@ -658,7 +681,7 @@ export class PanthopGame {
     this.wallR.position.y = camY;
     // Adjust texture offset so the wall texture stays fixed in world space
     // (mesh follows camera, so offset must rise WITH camY — tile is 2 world units tall)
-    const uvOffset = camY / 2;          // texture tile is 2 world units tall
+    const uvOffset = camY / this.WALL_TILE_H;   // scroll in lockstep with the world
     this.wallL.material.map.offset.y = uvOffset;
     this.wallR.material.map.offset.y = uvOffset;
   }

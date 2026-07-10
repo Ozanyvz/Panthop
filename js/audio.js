@@ -1,8 +1,12 @@
 /* Audio manager — single entry point for every sound in the game.
 
    SFX go through the Web Audio API (decoded buffers → low latency, free
-   overlap, per-shot rate/volume). Music uses HTMLAudioElement (streamed, looped,
-   JS-tweened crossfade) so the longer tier tracks don't sit decoded in memory.
+   overlap, per-shot rate/volume). Music uses HTMLAudioElement (streamed, so the
+   longer tier tracks don't sit decoded in memory) routed through a WebAudio
+   GainNode per track: iOS WKWebView ignores writes to HTMLMediaElement.volume,
+   so element-volume fades/levels are silently broken there — gain nodes are the
+   only reliable way to fade or set music/ambient levels on iOS. Where
+   MediaElementSource is unavailable we fall back to tweening el.volume.
 
    Everything is same-origin (assets/sfx/), so it behaves identically on the web
    build and inside the Capacitor webview. No external deps.
@@ -83,14 +87,18 @@ let chargeGain = null;
 let climbSrc = null;
 let climbGain = null;
 
-// Music (HTMLAudio).
-const musicEls = new Map();  // key → HTMLAudioElement
+// Music (HTMLAudio through per-track gain nodes).
+// Track record: { el, gain|null, fadeId, stopTimer, scale() }. `gain` is the
+// WebAudio path; when null the fallback tweens el.volume scaled by scale().
+const musicEls = new Map();  // key → track record
 let wantMusicKey = null;     // desired track; applied once unlocked
 let curMusicKey = null;      // track currently fading-in / playing
+let musicBus = null;         // channel level: MUSIC_VOL * vol.music
+let ambientBus = null;       // channel level: AMBIENT_VOL * vol.ambient
 
 // Ambient forest loop — plays under everything (menus + gameplay) on its own
 // channel, independent of which music track is up.
-let ambientEl = null;
+let ambientRec = null;
 
 /* ---------- Setup ---------- */
 export function initAudio() {
@@ -102,6 +110,12 @@ export function initAudio() {
       masterGain = ctx.createGain();
       masterGain.gain.value = SFX_MASTER * vol.sfx;
       masterGain.connect(ctx.destination);
+      musicBus = ctx.createGain();
+      musicBus.gain.value = musicTarget();
+      musicBus.connect(ctx.destination);
+      ambientBus = ctx.createGain();
+      ambientBus.gain.value = AMBIENT_VOL * vol.ambient;
+      ambientBus.connect(ctx.destination);
       preloadBuffers();
     }
   } catch { /* audio unsupported — game stays silent, never throws */ }
@@ -161,13 +175,71 @@ function unlock() {
 
 // The forest ambience loops forever once unlocked; its channel level controls it.
 function startAmbient() {
-  if (!ambientEl) {
-    ambientEl = new Audio(DIR + 'ambient.wav');
-    ambientEl.loop = true;
-    ambientEl.preload = 'auto';
+  if (!ambientRec) {
+    ambientRec = makeTrack(DIR + 'ambient.wav', ambientBus, () => AMBIENT_VOL * vol.ambient);
+    setTrackLevel(ambientRec, 1);
   }
-  ambientEl.volume = AMBIENT_VOL * vol.ambient;
-  if (vol.ambient > 0) ambientEl.play().catch(() => {});
+  if (vol.ambient > 0) ambientRec.el.play().catch(() => {});
+}
+
+// Build a looping HTMLAudio track wired into `bus` via its own GainNode. When
+// MediaElementSource isn't available the record falls back to el.volume, scaled
+// by `scale()` (the channel level the bus would otherwise provide).
+function makeTrack(url, bus, scale) {
+  const el = new Audio(url);
+  el.loop = true;
+  el.preload = 'auto';
+  let gain = null;
+  if (ctx && bus) {
+    try {
+      const src = ctx.createMediaElementSource(el);
+      gain = ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(gain).connect(bus);
+    } catch { gain = null; }
+  }
+  if (!gain) el.volume = 0;
+  return { el, gain, fadeId: 0, stopTimer: 0, scale };
+}
+
+// Set a track's fade level (0..1) immediately, cancelling any running fade.
+function setTrackLevel(rec, t) {
+  rec.fadeId++;
+  clearTimeout(rec.stopTimer);
+  if (rec.gain && ctx) {
+    const g = rec.gain.gain;
+    g.cancelScheduledValues(ctx.currentTime);
+    g.value = t;
+  } else {
+    rec.el.volume = t * rec.scale();
+  }
+}
+
+// Fade a track's level (0..1) over MUSIC_FADE_MS. WebAudio ramps cancel any
+// in-flight ramp, so rapid track switches can't fight each other; the fallback
+// tween is superseded via fadeId. `onDone` (used to pause) is also cancelled
+// by any newer fade/level call on the same track.
+function fadeTrack(rec, target, onDone) {
+  const id = ++rec.fadeId;
+  clearTimeout(rec.stopTimer);
+  if (rec.gain && ctx) {
+    const g = rec.gain.gain, now = ctx.currentTime;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(target, now + MUSIC_FADE_MS / 1000);
+    if (onDone) rec.stopTimer = setTimeout(() => { if (rec.fadeId === id) onDone(); }, MUSIC_FADE_MS + 50);
+  } else {
+    const el = rec.el, from = el.volume, to = target * rec.scale();
+    const start = performance.now();
+    const step = (now) => {
+      if (rec.fadeId !== id) return;   // superseded by a newer fade
+      const k = Math.min(1, (now - start) / MUSIC_FADE_MS);
+      el.volume = from + (to - from) * k;
+      if (k < 1) requestAnimationFrame(step);
+      else if (onDone) onDone();
+    };
+    requestAnimationFrame(step);
+  }
 }
 
 /* ---------- SFX ---------- */
@@ -245,16 +317,13 @@ export function stopClimb() {
 }
 
 /* ---------- Music ---------- */
-function musicEl(key) {
-  let el = musicEls.get(key);
-  if (!el) {
-    el = new Audio(DIR + MUSIC[key]);
-    el.loop = true;
-    el.preload = 'auto';
-    el.volume = 0;
-    musicEls.set(key, el);
+function musicRec(key) {
+  let rec = musicEls.get(key);
+  if (!rec) {
+    rec = makeTrack(DIR + MUSIC[key], musicBus, musicTarget);
+    musicEls.set(key, rec);
   }
-  return el;
+  return rec;
 }
 
 // Request a track. Starts immediately if unlocked, otherwise on first gesture.
@@ -266,15 +335,31 @@ export function playMusic(key) {
 
 export function stopMusic() {
   wantMusicKey = null;
-  if (curMusicKey) fadeTo(musicEl(curMusicKey), 0, () => musicEl(curMusicKey)?.pause());
+  if (!curMusicKey) return;
+  const rec = musicEls.get(curMusicKey);   // capture before clearing the key
   curMusicKey = null;
+  if (rec) fadeTrack(rec, 0, () => rec.el.pause());
+}
+
+// Silence the long-running audio before a fullscreen rewarded ad so the ad's
+// own sound doesn't play on top of it; resume() re-arms everything after.
+export function suspendForAd() {
+  stopCharge();
+  stopClimb();
+  const rec = curMusicKey ? musicEls.get(curMusicKey) : null;
+  if (rec) { rec.fadeId++; clearTimeout(rec.stopTimer); rec.el.pause(); }
+  if (ambientRec) ambientRec.el.pause();
 }
 
 // Re-arm audio the OS may have suspended (e.g. after a fullscreen rewarded ad):
-// resume the SFX context and restart the ambience if it got paused.
+// resume the SFX context and restart the ambience and music if they got paused.
 export function resume() {
   if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
-  if (ambientEl && vol.ambient > 0 && ambientEl.paused) ambientEl.play().catch(() => {});
+  if (ambientRec && vol.ambient > 0 && ambientRec.el.paused) ambientRec.el.play().catch(() => {});
+  const rec = curMusicKey ? musicEls.get(curMusicKey) : null;
+  if (rec && vol.music > 0 && rec.el.paused) {
+    rec.el.play().then(() => fadeTrack(rec, 1)).catch(() => {});
+  }
 }
 
 // Score → game-music tier (matches the 4 obstacle-tempo bands).
@@ -286,29 +371,15 @@ export function gameTier(score) {
 function applyMusic() {
   const key = wantMusicKey;
   if (!key || key === curMusicKey) return;
-  const prev = curMusicKey;
+  const prev = curMusicKey ? musicEls.get(curMusicKey) : null;
   curMusicKey = key;
 
-  if (prev && musicEls.has(prev)) {
-    const oldEl = musicEls.get(prev);
-    fadeTo(oldEl, 0, () => oldEl.pause());
+  if (prev) fadeTrack(prev, 0, () => prev.el.pause());
+  const rec = musicRec(key);
+  if (musicTarget() > 0) {
+    if (rec.el.paused) setTrackLevel(rec, 0);   // fresh start fades in from silence
+    rec.el.play().then(() => fadeTrack(rec, 1)).catch(() => {});
   }
-  const el = musicEl(key);
-  el.volume = 0;
-  if (musicTarget() > 0) el.play().then(() => fadeTo(el, musicTarget())).catch(() => {});
-}
-
-// Linear volume tween over MUSIC_FADE_MS, time-based (no rAF dependency on dt).
-function fadeTo(el, target, onDone) {
-  const from = el.volume;
-  const start = performance.now();
-  const step = (now) => {
-    const k = Math.min(1, (now - start) / MUSIC_FADE_MS);
-    el.volume = from + (target - from) * k;
-    if (k < 1) requestAnimationFrame(step);
-    else if (onDone) onDone();
-  };
-  requestAnimationFrame(step);
 }
 
 /* ---------- Channel volume (0..1) ---------- */
@@ -337,17 +408,25 @@ function applyChannel(ch) {
     if (vol.sfx <= 0) { stopCharge(); stopClimb(); }
     if (masterGain) masterGain.gain.value = SFX_MASTER * vol.sfx;
   } else if (ch === 'music') {
-    if (curMusicKey) {
-      const el = musicEl(curMusicKey);
-      if (vol.music > 0 && el.paused) el.play().catch(() => {});
-      fadeTo(el, musicTarget());
+    if (musicBus) musicBus.gain.value = musicTarget();
+    const rec = curMusicKey ? musicEls.get(curMusicKey) : null;
+    if (rec) {
+      if (vol.music > 0) {
+        if (rec.el.paused) rec.el.play().catch(() => {});
+        fadeTrack(rec, 1);   // fallback path re-scales el.volume; gain path is a no-op ramp to 1
+      } else {
+        // Hard mute: never trust volume alone — iOS ignores el.volume writes.
+        rec.fadeId++; clearTimeout(rec.stopTimer);
+        rec.el.pause();
+      }
     }
   } else if (ch === 'ambient') {
-    if (!ambientEl && unlocked) startAmbient();
-    if (ambientEl) {
-      ambientEl.volume = AMBIENT_VOL * vol.ambient;
-      if (vol.ambient > 0 && ambientEl.paused) ambientEl.play().catch(() => {});
-      else if (vol.ambient <= 0) ambientEl.pause();
+    if (!ambientRec && unlocked) startAmbient();
+    if (ambientBus) ambientBus.gain.value = AMBIENT_VOL * vol.ambient;
+    if (ambientRec) {
+      if (!ambientRec.gain) ambientRec.el.volume = AMBIENT_VOL * vol.ambient;
+      if (vol.ambient > 0 && ambientRec.el.paused) ambientRec.el.play().catch(() => {});
+      else if (vol.ambient <= 0) ambientRec.el.pause();
     }
   }
 }
