@@ -309,6 +309,21 @@ export function resetProgress() {
    KEY_FEATHERS, KEY_SMASH_PROG, KEY_SMASH_TOTAL, KEY_RUNS_TOTAL, KEY_JUMPS_TOTAL,
    KEY_ACH_COLLECTED, KEY_UPGRADES, KEY_SEEN_UPG]
     .forEach(k => localStorage.removeItem(k));
+  ['sword', 'dodge'].forEach(id => localStorage.removeItem(KEY_INF_PREFIX + id + '_v1'));
+}
+
+/* ---------- Sonsuz (+1) purchases — endless post-max upgrade counters ---------- */
+const KEY_INF_PREFIX = 'wj_inf_';
+
+export function getInfinityCount(id) {
+  const v = parseInt(localStorage.getItem(KEY_INF_PREFIX + id + '_v1') || '0', 10);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+export function addInfinityCount(id) {
+  const next = getInfinityCount(id) + 1;
+  localStorage.setItem(KEY_INF_PREFIX + id + '_v1', String(next));
+  return next;
 }
 
 /* ---------- Upgrades ---------- */

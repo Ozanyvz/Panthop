@@ -3,6 +3,7 @@ import {
   getCoins, spendCoins,
   getLeaves, spendLeaves,
   getFeathers, spendFeathers,
+  getInfinityCount, addInfinityCount,
 } from './storage.js';
 import { iconHTML } from './icons.js';
 
@@ -15,9 +16,12 @@ export const SPRINT_HOLD_BY_LEVEL = [2.0, 1.5, 1.0, 0.5];
 // the threshold to 35 / 50 / 75 (i.e. the drop %).
 const FEATHER_DROP_PCT_BY_LEVEL = [20, 35, 50, 75];
 
-// Dodge charges granted per run, by dodgeCount level (0 = just the base ability).
-const DODGE_BASE = 10;
-const DODGE_TOTAL_BY_LEVEL = [DODGE_BASE, 15, 20, 25];
+// Dodge charges granted per run, by dodge level (single merged track).
+const DODGE_CHARGES_BY_LEVEL = [0, 2, 5, 8, 10];
+
+// Sprint bonus: % chance that a sprint jump scores +2 instead of +1.
+// One 20-point step per level; level 5 makes the bonus guaranteed.
+const SPRINT_BONUS_PCT_BY_LEVEL = [0, 20, 40, 60, 80, 100];
 
 export const UPGRADES = [
   /* ---------- Tree bark (ağaç kabuğu 🪵) ---------- */
@@ -40,7 +44,7 @@ export const UPGRADES = [
   },
   {
     // Storage id stays 'sword' so existing saves keep their level; it is
-    // surfaced to the player as "Air Strike" via the i18n key + icon below.
+    // surfaced to the player as "Bilenmiş Pençe" via the i18n key + icon below.
     id: 'sword',
     i18nKey: 'upgrades.air_strike',
     icon: iconHTML('claw'),
@@ -66,18 +70,20 @@ export const UPGRADES = [
     i18nKey: 'upgrades.sprint_bonus',
     icon: iconHTML('spark'),
     currency: 'leaf',
-    maxLevel: 1,
-    costs: [2],
+    maxLevel: 5,
+    costs: [2, 2, 2, 2, 2],   // flat leaf price — each level buys another +20% chance
     requires: 'sprint',
     group: 'sprint',
   },
   {
+    // Pençe Bileme: each full sprint charge rolls the level's chance to hone
+    // an extra claw into the Bilenmiş Pençe pool. Storage id stays 'sprintSmash'.
     id: 'sprintSmash',
     i18nKey: 'upgrades.sprint_smash',
     icon: iconHTML('burst'),
     currency: 'leaf',
-    maxLevel: 1,
-    costs: [4],
+    maxLevel: 5,
+    costs: [4, 4, 4, 4, 4],   // flat leaf price — each level buys another +20% chance
     requires: 'sprint',
     group: 'sprint',
   },
@@ -108,27 +114,24 @@ export const UPGRADES = [
     defaultEffect: true,   // level 0 already drops at 20% → show it as "now"
   },
   {
-    // Dodge ability (parent): start each run with charges that absorb branch
-    // hits. Single-level unlock, like Sprint.
+    // Dodge ability: per-run charges that absorb branch hits. One merged
+    // track (the old separate count booster was folded in): 2/5/8/10 charges.
     id: 'dodge',
     i18nKey: 'upgrades.dodge',
     icon: iconHTML('shield'),
     currency: 'feather',
-    maxLevel: 1,
-    costs: [300],
+    maxLevel: 4,
+    costs: [25, 50, 100, 150],
     group: 'dodge',
   },
-  {
-    // Dodge count booster: +5 / +10 / +15 over the base 10 charges.
-    id: 'dodgeCount',
-    i18nKey: 'upgrades.dodge_count',
-    icon: iconHTML('plus'),
-    currency: 'feather',
-    maxLevel: 3,
-    costs: [100, 200, 300],
-    requires: 'dodge',
-    group: 'dodge',
-  },
+];
+
+/* ---------- Sonsuz (infinity) — endless +1 purchases past max ----------
+   Once a track below is maxed it moves to the Sonsuz tab: every purchase
+   permanently adds +1 to the ability's per-run charges at a flat price. */
+export const INFINITY_UPGRADES = [
+  { id: 'sword', i18nKey: 'upgrades.air_strike', icon: iconHTML('claw'), currency: 'coin', cost: 1000 },
+  { id: 'dodge', i18nKey: 'upgrades.dodge', icon: iconHTML('shield'), currency: 'feather', cost: 100 },
 ];
 
 const BY_ID = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
@@ -192,12 +195,13 @@ export function coinsEarned(score) {
   return Math.max(0, Math.floor(score * coinMultiplier()));
 }
 
-// Sword charges per run: 0 if not owned, otherwise grows with each level.
-// L1=10, L2=15, L3=22, L4=30 — fragility decreases with each level.
-const SWORD_CHARGES_BY_LEVEL = [0, 10, 15, 22, 30];
+// Sword charges per run: 0 if not owned, otherwise grows with each level
+// (L1=2, L2=5, L3=8, L4=10) plus any endless +1s bought in the Sonsuz tab.
+const SWORD_CHARGES_BY_LEVEL = [0, 2, 5, 8, 10];
 export function swordChargesPerRun() {
   const lvl = getUpgradeLevel('sword');
-  return SWORD_CHARGES_BY_LEVEL[lvl] ?? 0;
+  const base = SWORD_CHARGES_BY_LEVEL[lvl] ?? 0;
+  return base + (lvl > 0 ? getInfinityCount('sword') : 0);
 }
 
 /* ---------- Sprint (leaf) resolvers ---------- */
@@ -210,12 +214,15 @@ export function sprintHoldTime() {
   return SPRINT_HOLD_BY_LEVEL[lvl] ?? SPRINT_HOLD_BY_LEVEL[0];
 }
 
-export function sprintJumpBonusEnabled() {
-  return getUpgradeLevel('sprintBonus') >= 1;
+// Chance (0–100) that a sprint jump pays the +2 bonus.
+export function sprintBonusPercent() {
+  return SPRINT_BONUS_PCT_BY_LEVEL[getUpgradeLevel('sprintBonus')] ?? 0;
 }
 
-export function sprintSmashEnabled() {
-  return getUpgradeLevel('sprintSmash') >= 1;
+// Pençe Bileme: chance (0–100) that a full sprint charge hones an extra claw.
+const SMASH_CHANCE_PCT_BY_LEVEL = [0, 20, 40, 60, 80, 100];
+export function smashChancePercent() {
+  return SMASH_CHANCE_PCT_BY_LEVEL[getUpgradeLevel('sprintSmash')] ?? 0;
 }
 
 /* ---------- Feather (tüy) resolvers ---------- */
@@ -228,10 +235,44 @@ export function dodgeEnabled() {
   return getUpgradeLevel('dodge') >= 1;
 }
 
-// Dodge charges granted at the start of a run (0 if the ability isn't owned).
+// Dodge charges granted at the start of a run (0 if the ability isn't owned),
+// plus any endless +1s bought in the Sonsuz tab.
 export function dodgeChargesPerRun() {
-  if (!dodgeEnabled()) return 0;
-  return DODGE_TOTAL_BY_LEVEL[getUpgradeLevel('dodgeCount')] ?? DODGE_TOTAL_BY_LEVEL[0];
+  const lvl = getUpgradeLevel('dodge');
+  if (lvl < 1) return 0;
+  return (DODGE_CHARGES_BY_LEVEL[lvl] ?? 0) + getInfinityCount('dodge');
+}
+
+/* ---------- Sonsuz (infinity) resolvers ---------- */
+export function isMaxed(id) {
+  const def = BY_ID[id];
+  return !!def && getUpgradeLevel(id) >= def.maxLevel;
+}
+
+// The Sonsuz tab exists once any infinity-track upgrade is maxed.
+export function infinityAvailable() {
+  return INFINITY_UPGRADES.some(u => isMaxed(u.id));
+}
+
+// Only maxed tracks are listed (a maxed track shows ONLY here, not in its tab).
+export function infinityItems() {
+  return INFINITY_UPGRADES.filter(u => isMaxed(u.id));
+}
+
+export function canAffordInfinity(id) {
+  const u = INFINITY_UPGRADES.find(x => x.id === id);
+  return !!u && isMaxed(id) && balanceFor(u.currency) >= u.cost;
+}
+
+export function tryPurchaseInfinity(id) {
+  const u = INFINITY_UPGRADES.find(x => x.id === id);
+  if (!u || !isMaxed(id)) return { ok: false, reason: 'locked' };
+  const spend = u.currency === 'leaf' ? spendLeaves
+    : u.currency === 'feather' ? spendFeathers
+    : spendCoins;
+  if (!spend(u.cost)) return { ok: false, reason: 'poor' };
+  addInfinityCount(id);
+  return { ok: true };
 }
 
 export function snapshotModifiers() {
@@ -240,8 +281,8 @@ export function snapshotModifiers() {
     swordCharges: swordChargesPerRun(),
     sprintEnabled: sprintEnabled(),
     sprintHoldTime: sprintHoldTime(),
-    sprintJumpBonus: sprintJumpBonusEnabled(),
-    sprintSmash: sprintSmashEnabled(),
+    sprintBonusPct: sprintBonusPercent(),
+    smashChancePct: smashChancePercent(),
     dodgeCharges: dodgeChargesPerRun(),
   };
 }
@@ -268,22 +309,22 @@ export function effectParams(id, level) {
       const n = SWORD_CHARGES_BY_LEVEL[level] ?? 0;
       return { n };
     }
+    case 'sprintSmash': {
+      return { pct: SMASH_CHANCE_PCT_BY_LEVEL[level] ?? 0 };
+    }
     case 'sprintSpeed': {
       const sec = SPRINT_HOLD_BY_LEVEL[level] ?? SPRINT_HOLD_BY_LEVEL[0];
       return { sec: fmt(sec) };
     }
     case 'sprintBonus': {
-      return { n: 2 };
+      return { n: 2, pct: SPRINT_BONUS_PCT_BY_LEVEL[level] ?? 0 };
     }
     case 'featherLuck': {
       const pct = FEATHER_DROP_PCT_BY_LEVEL[level] ?? FEATHER_DROP_PCT_BY_LEVEL[0];
       return { pct };
     }
     case 'dodge': {
-      return { n: DODGE_BASE };
-    }
-    case 'dodgeCount': {
-      return { n: DODGE_TOTAL_BY_LEVEL[level] ?? DODGE_TOTAL_BY_LEVEL[0] };
+      return { n: DODGE_CHARGES_BY_LEVEL[level] ?? 0 };
     }
     default:
       return {};

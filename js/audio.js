@@ -22,12 +22,13 @@ const MUSIC_VOL = 0.5;
 const AMBIENT_VOL = 0.45;
 const MUSIC_FADE_MS = 600;
 
-// Three independently graded channels, each a continuous 0..1 volume. SFX rides
-// the master bus; music & ambient scale their own HTMLAudio elements. Each
-// channel persists both its current level and the last non-zero level, so an
-// off→on toggle restores exactly where it left off.
-const VOL_KEYS = { sfx: 'wj_vol_sfx_v2', music: 'wj_vol_music_v2', ambient: 'wj_vol_ambient_v2' };
-const MEM_KEYS = { sfx: 'wj_volmem_sfx_v2', music: 'wj_volmem_music_v2', ambient: 'wj_volmem_ambient_v2' };
+// Four graded channels, each a continuous 0..1 volume: `master` scales the
+// other three (one switch silences everything). SFX rides the master bus;
+// music & ambient scale their own HTMLAudio elements. Each channel persists
+// both its current level and the last non-zero level, so an off→on toggle
+// restores exactly where it left off.
+const VOL_KEYS = { master: 'wj_vol_master_v2', sfx: 'wj_vol_sfx_v2', music: 'wj_vol_music_v2', ambient: 'wj_vol_ambient_v2' };
+const MEM_KEYS = { master: 'wj_volmem_master_v2', sfx: 'wj_volmem_sfx_v2', music: 'wj_volmem_music_v2', ambient: 'wj_volmem_ambient_v2' };
 
 // Logical name → file, or an array of files (a random variant is picked per play).
 const SFX = {
@@ -75,9 +76,11 @@ let masterGain = null;
 let unlocked = false;
 
 // Per-channel volume (0..1) and the last non-zero value (for the on/off toggle).
-const vol = { sfx: 1, music: 1, ambient: 1 };
-const remembered = { sfx: 1, music: 1, ambient: 1 };
-const musicTarget = () => MUSIC_VOL * vol.music;
+const vol = { master: 1, sfx: 1, music: 1, ambient: 1 };
+const remembered = { master: 1, sfx: 1, music: 1, ambient: 1 };
+// Effective level of a channel = its own volume × the master volume.
+const eff = (ch) => (vol[ch] ?? 0) * vol.master;
+const musicTarget = () => MUSIC_VOL * eff('music');
 
 const buffers = new Map();   // file → AudioBuffer
 
@@ -108,13 +111,13 @@ export function initAudio() {
     if (AC) {
       ctx = new AC();
       masterGain = ctx.createGain();
-      masterGain.gain.value = SFX_MASTER * vol.sfx;
+      masterGain.gain.value = SFX_MASTER * eff('sfx');
       masterGain.connect(ctx.destination);
       musicBus = ctx.createGain();
       musicBus.gain.value = musicTarget();
       musicBus.connect(ctx.destination);
       ambientBus = ctx.createGain();
-      ambientBus.gain.value = AMBIENT_VOL * vol.ambient;
+      ambientBus.gain.value = AMBIENT_VOL * eff('ambient');
       ambientBus.connect(ctx.destination);
       preloadBuffers();
     }
@@ -176,10 +179,10 @@ function unlock() {
 // The forest ambience loops forever once unlocked; its channel level controls it.
 function startAmbient() {
   if (!ambientRec) {
-    ambientRec = makeTrack(DIR + 'ambient.wav', ambientBus, () => AMBIENT_VOL * vol.ambient);
+    ambientRec = makeTrack(DIR + 'ambient.wav', ambientBus, () => AMBIENT_VOL * eff('ambient'));
     setTrackLevel(ambientRec, 1);
   }
-  if (vol.ambient > 0) ambientRec.el.play().catch(() => {});
+  if (eff('ambient') > 0) ambientRec.el.play().catch(() => {});
 }
 
 // Build a looping HTMLAudio track wired into `bus` via its own GainNode. When
@@ -244,7 +247,7 @@ function fadeTrack(rec, target, onDone) {
 
 /* ---------- SFX ---------- */
 export function sfx(name, opts = {}) {
-  if (vol.sfx <= 0 || !ctx || !unlocked) return;
+  if (eff('sfx') <= 0 || !ctx || !unlocked) return;
   const entry = SFX[name];
   if (!entry) return;
   const file = Array.isArray(entry) ? entry[(Math.random() * entry.length) | 0] : entry;
@@ -261,7 +264,7 @@ export function sfx(name, opts = {}) {
 
 // Start/stop the looping sprint-charge whir (idempotent).
 export function startCharge() {
-  if (vol.sfx <= 0 || !ctx || !unlocked || chargeSrc) return;
+  if (eff('sfx') <= 0 || !ctx || !unlocked || chargeSrc) return;
   const buf = buffers.get(SFX.sprintCharge);
   if (!buf) return;
   chargeSrc = ctx.createBufferSource();
@@ -289,7 +292,7 @@ export function stopCharge() {
 // Looping climb footsteps. `rate` speeds the steps up while sprinting. Idempotent:
 // if already running it just updates the playback rate.
 export function startClimb(rate = 1) {
-  if (vol.sfx <= 0 || !ctx || !unlocked) return;
+  if (eff('sfx') <= 0 || !ctx || !unlocked) return;
   if (climbSrc) { climbSrc.playbackRate.value = rate; return; }
   const buf = buffers.get(SFX.climb);
   if (!buf) return;
@@ -355,16 +358,18 @@ export function suspendForAd() {
 // resume the SFX context and restart the ambience and music if they got paused.
 export function resume() {
   if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
-  if (ambientRec && vol.ambient > 0 && ambientRec.el.paused) ambientRec.el.play().catch(() => {});
+  if (ambientRec && eff('ambient') > 0 && ambientRec.el.paused) ambientRec.el.play().catch(() => {});
   const rec = curMusicKey ? musicEls.get(curMusicKey) : null;
-  if (rec && vol.music > 0 && rec.el.paused) {
+  if (rec && eff('music') > 0 && rec.el.paused) {
     rec.el.play().then(() => fadeTrack(rec, 1)).catch(() => {});
   }
 }
 
-// Score → game-music tier (matches the 4 obstacle-tempo bands).
+// Score → game-music tier (matches the 4 obstacle-tempo bands). Thresholds sit
+// at the quarter points of the difficulty ramp, which completes at score ~200
+// (see the obstacle constants in game.js) — keep the two in sync.
 export function gameTier(score) {
-  const key = score >= 19 ? 'g4' : score >= 13 ? 'g3' : score >= 7 ? 'g2' : 'g1';
+  const key = score >= 150 ? 'g4' : score >= 100 ? 'g3' : score >= 50 ? 'g2' : 'g1';
   if (key !== wantMusicKey) playMusic(key);
 }
 
@@ -404,14 +409,21 @@ export function setEnabled(ch, on) {
 }
 
 function applyChannel(ch) {
+  // Master scales every sink — re-apply the three real channels.
+  if (ch === 'master') {
+    applyChannel('sfx');
+    applyChannel('music');
+    applyChannel('ambient');
+    return;
+  }
   if (ch === 'sfx') {
-    if (vol.sfx <= 0) { stopCharge(); stopClimb(); }
-    if (masterGain) masterGain.gain.value = SFX_MASTER * vol.sfx;
+    if (eff('sfx') <= 0) { stopCharge(); stopClimb(); }
+    if (masterGain) masterGain.gain.value = SFX_MASTER * eff('sfx');
   } else if (ch === 'music') {
     if (musicBus) musicBus.gain.value = musicTarget();
     const rec = curMusicKey ? musicEls.get(curMusicKey) : null;
     if (rec) {
-      if (vol.music > 0) {
+      if (eff('music') > 0) {
         if (rec.el.paused) rec.el.play().catch(() => {});
         fadeTrack(rec, 1);   // fallback path re-scales el.volume; gain path is a no-op ramp to 1
       } else {
@@ -422,11 +434,11 @@ function applyChannel(ch) {
     }
   } else if (ch === 'ambient') {
     if (!ambientRec && unlocked) startAmbient();
-    if (ambientBus) ambientBus.gain.value = AMBIENT_VOL * vol.ambient;
+    if (ambientBus) ambientBus.gain.value = AMBIENT_VOL * eff('ambient');
     if (ambientRec) {
-      if (!ambientRec.gain) ambientRec.el.volume = AMBIENT_VOL * vol.ambient;
-      if (vol.ambient > 0 && ambientRec.el.paused) ambientRec.el.play().catch(() => {});
-      else if (vol.ambient <= 0) ambientRec.el.pause();
+      if (!ambientRec.gain) ambientRec.el.volume = AMBIENT_VOL * eff('ambient');
+      if (eff('ambient') > 0 && ambientRec.el.paused) ambientRec.el.play().catch(() => {});
+      else if (eff('ambient') <= 0) ambientRec.el.pause();
     }
   }
 }

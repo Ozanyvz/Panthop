@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(ROOT, 'assets/icons');
 const ASSETS_DIR = resolve(ROOT, 'assets');
-const PANTHER = resolve(ASSETS_DIR, 'character/black-panther-sitting-and-looking-at-camera-f135.png');
+const PANTHER = resolve(ASSETS_DIR, 'character/pantho-512x512px.png');
 
 /* ---------- Foliage (authored in a 64×64 grid, scales crisply as vector) ---------- */
 const LEAF_OUTLINE = '#21450B';

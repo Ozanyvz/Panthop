@@ -4,7 +4,7 @@ import {
   setAnimFrame,
   loadWallTexture,
   loadBranchTexture,
-  makeSawTexture,
+  loadEagleAnimations,
   makeBackgroundTexture,
   loadGroundTexture,
 } from './sprites.js';
@@ -37,7 +37,6 @@ const SPRINT_MULT = 2.0;              // climb-speed multiplier while sprinting
 
 const NORMAL_JUMP_SCORE = 1;
 const SPRINT_JUMP_SCORE = 2;          // landing a jump launched while sprinting
-const SPRINT_SMASH_SCORE = 1;         // bonus per mid-air obstacle a sprint jump destroys
 const CHARGE_RING_OFFSET = 0.7;       // sprint-charge ring height above the character
 
 const JUMP_DURATION_BASE = 0.42;      // seconds
@@ -50,14 +49,23 @@ const JUMP_HOLD_FRAME = 12;           // single stretched-leap frame held while 
 // the wall upward: head up, belly pressed against the wall it's clinging to.
 const CLIMB_ROT = Math.PI / 2;
 
+// Difficulty ramp: spacing tightens and mid-air birds get likelier with score.
+// Both rates are tuned so the ramp completes around score ~200 — start and peak
+// difficulty are unchanged, the climb between them is just more gradual.
 const OBSTACLE_SPACING_BASE = 3.4;
 const OBSTACLE_SPACING_MIN = 2.3;
-const SPACING_SHRINK_PER_SCORE = 0.04;
+const SPACING_SHRINK_PER_SCORE = 0.005;
 const MIDAIR_CHANCE_BASE = 0.15;
 const MIDAIR_CHANCE_MAX = 0.45;
-const MIDAIR_CHANCE_GROWTH = 0.012;
+const MIDAIR_CHANCE_GROWTH = 0.0015;
 
-const SAW_HITBOX = 0.58;   // bird silhouette doesn't fill its quad — keep contact tight
+const BIRD_HITBOX = 0.58;  // bird silhouette doesn't fill its quad — keep contact tight
+const BIRD_PLANE = 1.35;   // quad size: sheet art fills ~2/3 of its cell, upsized to read like the old bird
+const BIRD_DEATH_SEC = 0.7;   // KO'd eagle flutters down/fades for this long
+const BIRD_FEAR_RANGE = 2.5;  // birds this close to a claw-armed Pantho switch to the scared loop
+const ATTACK_SEC = 0.3;       // Pantho's mid-air claw swipe overlay duration
+const ATTACK_START_FRAME = 8;  // the sheet's fierce lunge-slash segment
+const ATTACK_END_FRAME = 11;
 
 /* sprite hitbox (attached to wall, reaches into gap) */
 const WALL_SPIKE_W = 1.0;
@@ -70,6 +78,15 @@ const WALL_SPIKE_OVERLAP = 0.22;
 
 /* camera follow: keep character ~35% from bottom */
 const CAM_FOLLOW_OFFSET = 2.0;
+
+/* death: the KO'd cub tumbles downward for a beat before the game-over screen */
+const DEATH_FALL_SEC = 0.9;
+const DEATH_GRAVITY = 26;     // world units/s² pulling the falling cub down
+
+/* landing: brief grip pause on the wall so the land sheet gets seen */
+const LAND_PAUSE_SEC = 0.2;
+const LAND_START_FRAME = 5;   // skip the sheet's airborne drop frames — impact onward
+const LAND_END_FRAME = 19;    // finish on the recovered head-up pose (leads into the run)
 const CAM_SMOOTH = 8.0;
 const CAM_INTRO_SMOOTH = 1.6;   // gentle glide from the intro framing to the follow target
 
@@ -78,6 +95,7 @@ const STATE = {
   READY: 'ready',     // waiting on wall, not yet started climb
   CLIMB: 'climb',
   JUMP: 'jump',
+  LAND: 'land',       // short grip pause right after a jump connects
   DEAD: 'dead',
 };
 
@@ -91,12 +109,13 @@ export class PanthopGame {
     this.modifiers = {
       startSpeedMult: 1.0,
       swordCharges: 0,
+      smashChancePct: 0,     // Pençe Bileme: % chance a full sprint charge hones +1 claw
       sprintEnabled: false,
       sprintHoldTime: SPRINT_HOLD_TIME_BASE,
-      sprintJumpBonus: false,
-      sprintSmash: false,
+      sprintBonusPct: 0,     // % chance a sprint jump pays the +2 bonus
     };
     this.swordCharges = 0;
+    this.attackClock = 0;
 
     this._initThree();
     this._initWorld();
@@ -159,10 +178,13 @@ export class PanthopGame {
       wall: loadWallTexture(),
       spikeL: loadBranchTexture(true),   // branch points right (from left wall)
       spikeR: loadBranchTexture(false),  // branch points left (from right wall)
-      saw: makeSawTexture(),
       bg: makeBackgroundTexture(),
       ground: loadGroundTexture(),
     };
+    // Hovering-eagle sheets: `idle` is shared by every live bird (one frame
+    // write flaps them all); `death` is cloned per dying bird.
+    this.eagleAnims = loadEagleAnimations();
+    this.dyingBirds = [];
 
     // Use renderOrder to force painter's order — simpler & safer with orthographic sprites.
     // Ground + earth fill sit IN FRONT of the walls so the trunks end at the ground line
@@ -308,12 +330,25 @@ export class PanthopGame {
     }
     this.obstacles = [];
 
+    // Clear any dying-bird effects left over from the previous run.
+    for (const d of this.dyingBirds) {
+      this.scene.remove(d.mesh);
+      d.mesh.material.dispose();
+      d.anim.texture.dispose();
+    }
+    this.dyingBirds = [];
+    this.attackClock = 0;
+
     this.score = 0;
     this.state = STATE.READY;       // standing on ground, waiting for first tap
+    this.deadTime = 0;
+    this.deadVel = 0;
+    this.landTime = 0;
+    this._gameOverFired = false;
     this.wallSide = -1;             // first jump will land on left wall
     this.character.position.set(0, GROUND_STAND_Y, 1);
     this._setCharAnim('idle');
-    this._face(-1);                 // face left (about to jump left)
+    this._face(1);                  // idle sheet faces the camera — draw it as authored, no mirror
     this.character.rotation.z = 0;
     this.charBobPhase = 0;
     this.holding = false;
@@ -326,11 +361,12 @@ export class PanthopGame {
 
     this.climbSpeed = CLIMB_BASE_SPEED * (this.modifiers.startSpeedMult ?? 1.0);
     this.swordCharges = this.modifiers.swordCharges ?? 0;
+    // Pençe Bileme: chance to hone an extra claw on each full sprint charge.
+    this.smashChancePct = this.modifiers.smashChancePct ?? 0;
     // Snapshot the sprint unlocks for this run (leaf-bought upgrades).
     this.sprintEnabled = this.modifiers.sprintEnabled ?? false;
     this.sprintHoldTime = this.modifiers.sprintHoldTime ?? SPRINT_HOLD_TIME_BASE;
-    this.sprintJumpBonus = this.modifiers.sprintJumpBonus ?? false;
-    this.sprintSmash = this.modifiers.sprintSmash ?? false;
+    this.sprintBonusPct = this.modifiers.sprintBonusPct ?? 0;
     // Dodge charges absorb branch (wall) hits for this run.
     this.dodgeCharges = this.modifiers.dodgeCharges ?? 0;
     if (this.callbacks.onSwordCharges) this.callbacks.onSwordCharges(this.swordCharges);
@@ -370,7 +406,9 @@ export class PanthopGame {
   }
 
   resume() {
-    if (this.running || this.state === STATE.DEAD) return;
+    // DEAD blocks resume only once game over has fired — a pause that lands
+    // mid death-fall may resume so the fall can finish and fire game over.
+    if (this.running || (this.state === STATE.DEAD && this._gameOverFired)) return;
     this.running = true;
     this.lastTime = performance.now();   // avoid a huge dt jump after the pause
     requestAnimationFrame(this._tick);
@@ -403,7 +441,9 @@ export class PanthopGame {
     audio.stopCharge();   // release ends any charging whir
     if (!this.running) return;
     if (this.state === STATE.READY) this._beginStartJump();
-    else if (this.state === STATE.CLIMB) this._beginJump(wasSprinting);
+    // A tap during the landing pause jumps right away — the pause is cosmetic
+    // and must never eat player input.
+    else if (this.state === STATE.CLIMB || this.state === STATE.LAND) this._beginJump(wasSprinting);
     else return;   // mid-jump release performs no new jump
     if (this.callbacks.onJump) this.callbacks.onJump();
   }
@@ -429,7 +469,7 @@ export class PanthopGame {
   _beginJump(isSprint = false) {
     this.state = STATE.JUMP;
     this.jumpT = 0;
-    this.isSprintJump = isSprint;        // sprint jump: +score & smashes mid-air obstacles
+    this.isSprintJump = isSprint;        // sprint jump: rolls the +2 score bonus on landing
 
     const fromX = this.wallSide === -1 ? CHAR_LEFT_X : CHAR_RIGHT_X;
     const toX = this.wallSide === -1 ? CHAR_RIGHT_X : CHAR_LEFT_X;
@@ -456,13 +496,17 @@ export class PanthopGame {
     this.character.rotation.z = this.wallSide * CLIMB_ROT;
     this._face(this.wallSide);
 
-    this.state = STATE.CLIMB;
+    // Short grip pause: the land sheet plays before the climb resumes.
+    this.state = STATE.LAND;
+    this.landTime = 0;
+    this.attackClock = 0;   // any mid-air swipe ends on landing
     audio.sfx('land');
     if (this.isStartJump) {
       this.isStartJump = false;
     } else {
-      // Sprint jump only scores the +2 bonus once the bonus upgrade is owned.
-      const sprintBonus = this.isSprintJump && this.sprintJumpBonus;
+      // Sprint jump pays the +2 bonus with the upgrade's roll chance
+      // (0% when unowned, +20 points per level up to 100%).
+      const sprintBonus = this.isSprintJump && Math.random() * 100 < this.sprintBonusPct;
       const gain = sprintBonus ? SPRINT_JUMP_SCORE : NORMAL_JUMP_SCORE;
       this.score += gain;
       audio.sfx('scoreTick');   // the point lands together with the grip sound
@@ -475,6 +519,21 @@ export class PanthopGame {
 
     // Check landing collision with any obstacle on the new wall near this y
     this._checkWallCollisionAt(this.character.position.y);
+  }
+
+  // Pençe Bileme (sprintSmash upgrade): a completed sprint charge may hone an
+  // extra claw (20–100% by level), added to the Bilenmiş Pençe pool. Claws
+  // stack and persist — jumping doesn't clear them; one is spent per mid-air
+  // obstacle shredded.
+  _rollSwordGrant() {
+    if (Math.random() * 100 >= this.smashChancePct) return;
+    this.swordCharges += 1;
+    if (this.callbacks.onSwordCharges) {
+      // Screen point of the cub, so the HUD can fly the claw icon from here.
+      const p = this.character.position;
+      const sp = this._projectToScreen(p.x, p.y, p.z);
+      this.callbacks.onSwordCharges(this.swordCharges, true, sp);
+    }
   }
 
   /* ---------- Character sprite animation ---------- */
@@ -505,22 +564,46 @@ export class PanthopGame {
 
   _syncCharacterAnim(dt) {
     if (this.state === STATE.READY) {
+      // Idle loops while the cat waits on the ground (breathing / tail sway).
       this._setCharAnim('idle');
+      const anim = this.anims.idle;
+      this.animClock += dt;
+      setAnimFrame(anim, Math.floor(this.animClock * anim.fps) % anim.frameCount);
     } else if (this.state === STATE.JUMP) {
-      this._setCharAnim('jump');
-      // Hold one stretched-leap frame for the whole arc so the airborne pose
-      // stays steady instead of flickering through the sheet's other poses.
-      setAnimFrame(this.anims.jump, JUMP_HOLD_FRAME);
+      if (this.attackClock > 0) {
+        // Claw swipe overlay: sweep the sheet's lunge-slash frames once across
+        // ATTACK_SEC, then fall back to the held leap frame below.
+        this._setCharAnim('attack');
+        const t = 1 - this.attackClock / ATTACK_SEC;
+        setAnimFrame(this.anims.attack, Math.round(ATTACK_START_FRAME + t * (ATTACK_END_FRAME - ATTACK_START_FRAME)));
+      } else {
+        this._setCharAnim('jump');
+        // Hold one stretched-leap frame for the whole arc so the airborne pose
+        // stays steady instead of flickering through the sheet's other poses.
+        setAnimFrame(this.anims.jump, JUMP_HOLD_FRAME);
+      }
+    } else if (this.state === STATE.LAND) {
+      // One-shot grip: spread the impact→head-up frames across the whole pause
+      // so the grip always ends on the recovered pose that leads into the run.
+      this._setCharAnim('land');
+      const t = Math.min(1, this.landTime / LAND_PAUSE_SEC);
+      setAnimFrame(this.anims.land, Math.round(LAND_START_FRAME + t * (LAND_END_FRAME - LAND_START_FRAME)));
     } else if (this.state === STATE.CLIMB) {
-      this._setCharAnim('walk');
-      const anim = this.anims.walk;
-      // Walk plays while climbing; freezes while charging, speeds up while sprinting.
-      let rate = 1;
-      if (this.sprintEnabled && this.holding) rate = this.holdTime >= this.sprintHoldTime ? SPRINT_MULT : 0;
-      this.animClock += dt * rate;
+      // Charging plays its own tense-crouch sheet; sprinting reuses the walk
+      // sheet at SPRINT_MULT speed (reads more natural than a separate sheet).
+      const sprinting = this.sprintEnabled && this.holding && this.holdTime >= this.sprintHoldTime;
+      const charging = this.sprintEnabled && this.holding && !sprinting;
+      this._setCharAnim(charging ? 'charge' : 'walk');
+      const anim = this.anims[this.charAnimName];
+      this.animClock += dt * (sprinting ? SPRINT_MULT : 1);
+      setAnimFrame(anim, Math.floor(this.animClock * anim.fps) % anim.frameCount);
+    } else if (this.state === STATE.DEAD) {
+      // KO tumble loops while the cub falls (see the DEAD branch in _update).
+      this._setCharAnim('death');
+      const anim = this.anims.death;
+      this.animClock += dt;
       setAnimFrame(anim, Math.floor(this.animClock * anim.fps) % anim.frameCount);
     }
-    // DEAD: leave the character frozen on its last frame.
   }
 
   /* ---------- Sprint-charge ring ---------- */
@@ -579,9 +662,13 @@ export class PanthopGame {
 
   _update(dt) {
     if (this.state === STATE.READY) {
-      this.charBobPhase += dt * 3.5;
-      this.character.position.y = GROUND_STAND_Y + Math.abs(Math.sin(this.charBobPhase)) * 0.12;
-      this.character.rotation.z = Math.sin(this.charBobPhase * 2) * 0.04;
+      // Waiting on the ground: the mesh holds still — all idle motion
+      // (breathing, tail sway, blinks) lives in the sprite sheet itself.
+    } else if (this.state === STATE.LAND) {
+      // Gripping the wall after a jump: hold position while the land sheet
+      // plays, then resume the climb.
+      this.landTime += dt;
+      if (this.landTime >= LAND_PAUSE_SEC) this.state = STATE.CLIMB;
     } else if (this.state === STATE.CLIMB) {
       // Climb sway rides on top of the quarter-turn base (head up against the wall).
       const climbRot = this.wallSide * CLIMB_ROT;
@@ -592,7 +679,11 @@ export class PanthopGame {
           // fires the moment we cross the threshold; footsteps speed up.
           audio.stopCharge();
           audio.startClimb(1.7);
-          if (!this._sprintReadyPlayed) { audio.sfx('sprintReady'); this._sprintReadyPlayed = true; }
+          if (!this._sprintReadyPlayed) {
+            audio.sfx('sprintReady');
+            this._sprintReadyPlayed = true;
+            this._rollSwordGrant();   // a full charge may hone a claw
+          }
           this.character.position.y += this.climbSpeed * SPRINT_MULT * dt;
           this.charBobPhase += dt * 10 * SPRINT_MULT;
           this.character.rotation.z = climbRot + Math.sin(this.charBobPhase) * 0.05;
@@ -612,6 +703,7 @@ export class PanthopGame {
       }
       this._checkWallCollisionAt(this.character.position.y);
     } else if (this.state === STATE.JUMP) {
+      if (this.attackClock > 0) this.attackClock -= dt;
       this.jumpT += dt / this.jumpDuration;
       const t = Math.min(1, this.jumpT);
       const x = this.jumpFromX + (this.jumpToX - this.jumpFromX) * t;
@@ -624,6 +716,17 @@ export class PanthopGame {
 
       if (t >= 1) {
         this._finishJump();
+      }
+    } else if (this.state === STATE.DEAD) {
+      // KO fall: gravity pulls the tumbling cub down out of view, then the
+      // game-over flow fires and the loop stops.
+      this.deadTime += dt;
+      this.deadVel += DEATH_GRAVITY * dt;
+      this.character.position.y -= this.deadVel * dt;
+      if (this.deadTime >= DEATH_FALL_SEC && !this._gameOverFired) {
+        this._gameOverFired = true;
+        this.running = false;
+        if (this.callbacks.onGameOver) this.callbacks.onGameOver(this.score);
       }
     }
 
@@ -651,11 +754,44 @@ export class PanthopGame {
       }
     }
 
-    // Animate obstacles (hovering bird of prey — gentle wing-tilt, desynced by position)
+    // Animate obstacles: the shared idle/scared sheets flap every bird at
+    // once (same clock → seamless texture swaps), and a gentle wing-tilt
+    // (desynced by height) keeps them from looking cloned. A bird close to a
+    // claw-armed Pantho swaps to the scared loop.
     this._obsTime = (this._obsTime || 0) + dt;
+    const birdIdle = this.eagleAnims.idle;
+    const birdScared = this.eagleAnims.scared;
+    const birdFrame = Math.floor(this._obsTime * birdIdle.fps) % birdIdle.frameCount;
+    setAnimFrame(birdIdle, birdFrame);
+    setAnimFrame(birdScared, birdFrame);
+    const clawArmed = this.swordCharges > 0 && this.state !== STATE.DEAD;
+    const chX = this.character.position.x;
+    const chY = this.character.position.y;
     for (const o of this.obstacles) {
-      if (o.type === 'saw') {
+      if (o.type === 'bird') {
         o.mesh.rotation.z = Math.sin(this._obsTime * 5 + o.y) * 0.18;
+        const dx = o.x - chX, dy = o.y - chY;
+        const afraid = clawArmed && (dx * dx + dy * dy) < BIRD_FEAR_RANGE * BIRD_FEAR_RANGE;
+        const wantTex = afraid ? birdScared.texture : birdIdle.texture;
+        if (o.mesh.material.map !== wantTex) {
+          o.mesh.material.map = wantTex;
+          o.mesh.material.needsUpdate = true;
+        }
+      }
+    }
+
+    // KO'd eagles flutter down and fade, each on its own cloned death sheet.
+    for (let i = this.dyingBirds.length - 1; i >= 0; i--) {
+      const d = this.dyingBirds[i];
+      d.t += dt;
+      d.mesh.position.y -= (1.5 + 7 * d.t) * dt;   // accelerating drop
+      setAnimFrame(d.anim, Math.min(d.anim.frameCount - 1, Math.floor(d.t * d.anim.fps)));
+      d.mesh.material.opacity = Math.max(0, 1 - d.t / BIRD_DEATH_SEC);
+      if (d.t >= BIRD_DEATH_SEC) {
+        this.scene.remove(d.mesh);
+        d.mesh.material.dispose();
+        d.anim.texture.dispose();
+        this.dyingBirds.splice(i, 1);
       }
     }
 
@@ -735,16 +871,16 @@ export class PanthopGame {
   }
 
   _addMidairObstacle(y) {
-    const o = this._acquireObstacle('saw');
+    const o = this._acquireObstacle('bird');
     const x = (Math.random() - 0.5) * 1.4; // near center
     o.mesh.position.set(x, y, 0.5);
     o.mesh.rotation.z = 0;
-    o.type = 'saw';
+    o.type = 'bird';
     o.side = 0;
     o.x = x;
     o.y = y;
-    o.hitW = SAW_HITBOX;
-    o.hitH = SAW_HITBOX;
+    o.hitW = BIRD_HITBOX;
+    o.hitH = BIRD_HITBOX;
     this.scene.add(o.mesh);
     this.obstacles.push(o);
   }
@@ -764,8 +900,8 @@ export class PanthopGame {
       geo = new THREE.PlaneGeometry(WALL_SPIKE_W, WALL_SPIKE_H);
       mat = new THREE.MeshBasicMaterial({ map: this.tex.spikeR, transparent: true, depthTest: false });
     } else {
-      geo = new THREE.PlaneGeometry(1.0, 1.0);
-      mat = new THREE.MeshBasicMaterial({ map: this.tex.saw, transparent: true, depthTest: false });
+      geo = new THREE.PlaneGeometry(BIRD_PLANE, BIRD_PLANE);
+      mat = new THREE.MeshBasicMaterial({ map: this.eagleAnims.idle.texture, transparent: true, depthTest: false });
     }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = this._ro.obstacle;
@@ -806,30 +942,18 @@ export class PanthopGame {
     const chY = this.character.position.y;
     for (let i = 0; i < this.obstacles.length; i++) {
       const o = this.obstacles[i];
-      if (o.type !== 'saw') continue;
+      if (o.type !== 'bird') continue;
       const dy = Math.abs(o.y - chY);
       if (dy > (CHAR_HITBOX_H / 2 + o.hitH / 2)) continue;
       const dx = Math.abs(o.x - chX);
       if (dx >= (CHAR_HITBOX_W / 2 + o.hitW / 2)) continue;
       // Where the bird died, in screen pixels — so the HUD can pop "+1" there.
       const sp = this._projectToScreen(o.mesh.position.x, o.mesh.position.y, o.mesh.position.z);
-      // Priority 1: a sprint jump smashes the obstacle for free (+bonus), and
-      // must NOT consume an Air-Strike upgrade charge. Requires the sprint-smash unlock.
-      if (this.isSprintJump && this.sprintSmash) {
-        this.scene.remove(o.mesh);
-        this.obstacles.splice(i, 1);
-        this.obstaclePool.push(o);
-        i -= 1;
-        this.score += SPRINT_SMASH_SCORE;
-        audio.sfx('sprintSmash');
-        if (this.callbacks.onScore) this.callbacks.onScore(this.score);
-        if (this.callbacks.onScorePop) this.callbacks.onScorePop(SPRINT_SMASH_SCORE);
-        if (this.callbacks.onSprintSmash) this.callbacks.onSprintSmash(sp);
-        continue;
-      }
-      // Priority 2: spend an Air-Strike charge if we have one.
+      // Spend a claw (Bilenmiş Pençe) if we have one — the only smash path.
       if (this.swordCharges > 0) {
         this.swordCharges -= 1;
+        this._spawnDyingBird(o.mesh.position.x, o.mesh.position.y);
+        this.attackClock = ATTACK_SEC;   // Pantho swipes mid-air (see _syncCharacterAnim)
         this.scene.remove(o.mesh);
         this.obstacles.splice(i, 1);
         this.obstaclePool.push(o);
@@ -841,6 +965,23 @@ export class PanthopGame {
       this._die();
       return;
     }
+  }
+
+  // A struck eagle: its own mesh + a cloned death texture so each dying bird
+  // plays the KO sheet independently while it flutters down and fades.
+  _spawnDyingBird(x, y) {
+    const base = this.eagleAnims.death;
+    const tex = base.texture.clone();
+    tex.needsUpdate = true;
+    const anim = { ...base, texture: tex, frame: -1 };
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(BIRD_PLANE, BIRD_PLANE),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false })
+    );
+    mesh.position.set(x, y, 0.55);
+    mesh.renderOrder = this._ro.obstacle;
+    this.scene.add(mesh);
+    this.dyingBirds.push({ mesh, anim, t: 0 });
   }
 
   // World point → canvas pixel coords (for HUD overlays anchored to the world).
@@ -858,10 +999,13 @@ export class PanthopGame {
   _die() {
     if (this.state === STATE.DEAD) return;
     this.state = STATE.DEAD;
-    this.running = false;
+    this.deadTime = 0;
+    this.deadVel = 0;
+    this.character.rotation.z = 0;   // the tumble lives in the death sheet itself
     audio.stopCharge();
     audio.stopClimb();
     audio.sfx('death');
-    if (this.callbacks.onGameOver) this.callbacks.onGameOver(this.score);
+    // The loop keeps running: the KO'd cub tumbles downward for DEATH_FALL_SEC
+    // (see the DEAD branch in _update), then game over fires and the loop stops.
   }
 }

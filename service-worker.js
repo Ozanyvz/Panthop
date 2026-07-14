@@ -1,5 +1,5 @@
 /* Panthop service worker — app shell + i18n stale-while-revalidate */
-const VERSION = 'wj-v48';
+const VERSION = 'wj-v54';
 const SHELL_CACHE = `${VERSION}-shell`;
 const I18N_CACHE  = `${VERSION}-i18n`;
 const CDN_CACHE   = `${VERSION}-cdn`;
@@ -26,9 +26,16 @@ const SHELL_URLS = [
   'assets/icons/icon-512-maskable.png',
   'assets/icons/apple-touch-icon.png',
   'assets/icons/favicon-32.png',
-  'assets/character/black-panther-sitting-and-looking-at-camera-f135.png',
+  'assets/character/panther-idle.png',
   'assets/character/panther-walk.png',
   'assets/character/panther-jump.png',
+  'assets/character/panther-charge.png',
+  'assets/character/panther-death.png',
+  'assets/character/panther-land.png',
+  'assets/character/panther-attack.png',
+  'assets/character/eagle-idle.png',
+  'assets/character/eagle-scared.png',
+  'assets/character/eagle-death.png',
   'assets/logo-name-panthop.svg',
   'assets/logo-panther.png',
   'assets/vine-corner.svg',

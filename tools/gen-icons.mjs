@@ -42,6 +42,33 @@ function makeGearGrid() {
    Palette keys are single chars; '.' is transparent. */
 
 const ICONS = {
+  // ∞ sonsuz — golden infinity loop for the endless (+1) upgrade tab.
+  infinity: {
+    palette: {
+      d: '#8a6a12', // dark gold outline
+      g: '#ffd447', // gold body
+      l: '#ffe98a', // top highlight
+    },
+    grid: [
+      '................',
+      '................',
+      '................',
+      '................',
+      '..dddd....dddd..',
+      '.dlgggd..dlgggd.',
+      'dlg..ggddgg..gld',
+      'dg....gggg....gd',
+      'dg....gggg....gd',
+      'dgg..ggddgg..ggd',
+      '.dggggd..dggggd.',
+      '..dddd....dddd..',
+      '................',
+      '................',
+      '................',
+      '................',
+    ],
+  },
+
   // 🪵 kabuk — a short wooden log with cut-end growth rings on the right.
   bark: {
     palette: {

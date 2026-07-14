@@ -53,6 +53,7 @@
     "title": "AYARLAR",
     "language": "DIL",
     "sound": "SES",
+    "master": "ANA SES",
     "sfx": "EFEKTLER",
     "music": "MUZIK",
     "ambient": "AMBIYANS",
@@ -83,6 +84,7 @@
     "tab_coin": "Kabuk",
     "tab_leaf": "Sprint",
     "tab_feather": "Tuy",
+    "tab_infinity": "Sonsuz",
     "tab_locked": "Bilenmis Pence ile acilir",
     "new_badge": "YENI",
     "warm_start": {
@@ -112,13 +114,13 @@
     },
     "sprint_bonus": {
       "name": "Sprint Primi",
-      "tagline": "Sprint sirasinda atilan ziplamalar ekstra skor kazandirir.",
-      "effect": "Sprint ziplamada +{n} skor"
+      "tagline": "Sprint sirasinda atilan ziplamalar sansa bagli ekstra skor kazandirir.",
+      "effect": "%{pct} ihtimalle +{n} skor"
     },
     "sprint_smash": {
       "name": "Pence Bileme",
-      "tagline": "Sprint ziplamasi havadaki engelleri carptigi an paramparca eder.",
-      "effect": "Sprint ziplamasi engelleri parcalar"
+      "tagline": "Sprint sarjin her doldugunda sansla bir pence bilenir; Bilenmis Pence stoguna eklenir, harcanana kadar kaybolmaz.",
+      "effect": "%{pct} sansla +1 pence"
     },
     "feather_luck": {
       "name": "Sansli Tuy",
@@ -128,11 +130,6 @@
     "dodge": {
       "name": "Kacis",
       "tagline": "Bir dala carptiginda bir kacis hakki harcayip olmek yerine yoluna devam edersin.",
-      "effect": "Aktif - run basina {n} kacis"
-    },
-    "dodge_count": {
-      "name": "Ekstra Kacis",
-      "tagline": "Her run baslangicindaki kacis hakki sayisini artirir.",
       "effect": "run basina {n} kacis"
     }
   },

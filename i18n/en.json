@@ -53,6 +53,7 @@
     "title": "SETTINGS",
     "language": "LANGUAGE",
     "sound": "SOUND",
+    "master": "MASTER",
     "sfx": "EFFECTS",
     "music": "MUSIC",
     "ambient": "AMBIENCE",
@@ -83,6 +84,7 @@
     "tab_coin": "Bark",
     "tab_leaf": "Sprint",
     "tab_feather": "Feather",
+    "tab_infinity": "Endless",
     "tab_locked": "Unlocked by Sharpened Claw",
     "new_badge": "NEW",
     "warm_start": {
@@ -112,13 +114,13 @@
     },
     "sprint_bonus": {
       "name": "Sprint Bonus",
-      "tagline": "Jumps launched mid-sprint score extra points.",
-      "effect": "+{n} score on sprint jump"
+      "tagline": "Jumps launched mid-sprint have a chance to score extra points.",
+      "effect": "{pct}% chance of +{n} score"
     },
     "sprint_smash": {
       "name": "Claw Hone",
-      "tagline": "A sprint jump shatters mid-air obstacles on contact.",
-      "effect": "Sprint jump smashes obstacles"
+      "tagline": "Every full sprint charge has a chance to hone an extra claw, added to your Sharpened Claw stock; it stays until spent.",
+      "effect": "{pct}% chance to hone a claw"
     },
     "feather_luck": {
       "name": "Lucky Feather",
@@ -128,11 +130,6 @@
     "dodge": {
       "name": "Dodge",
       "tagline": "Hit a branch and you spend a dodge charge to slip past instead of dying.",
-      "effect": "Active - {n} dodges per run"
-    },
-    "dodge_count": {
-      "name": "Extra Dodges",
-      "tagline": "Increases how many dodge charges you start each run with.",
       "effect": "{n} dodges per run"
     }
   },

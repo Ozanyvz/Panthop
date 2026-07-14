@@ -28,11 +28,11 @@ function pixelTexture(canvas) {
 }
 
 /* ---------- Character: animated sprite sheets (idle / walk / jump) ----------
-   The panther artwork lives in assets/character/. `panther-walk` and
-   `panther-jump` are 5×5 sheets of 256px cells (25 frames each); the idle pose
-   is a single image. A frame is shown by sizing the texture's repeat window to
-   one cell and sliding its offset to that cell (UV origin is bottom-left, so
-   rows count up from the bottom). The art faces LEFT by default. */
+   The panther artwork lives in assets/character/. All three are 5×5 sheets of
+   256px cells (25 frames each). A frame is shown by sizing the texture's
+   repeat window to one cell and sliding its offset to that cell (UV origin is
+   bottom-left, so rows count up from the bottom). The art faces LEFT by
+   default. */
 const SHEET_CELL = 256;
 
 function configureAnim(texture, cols, rows, frameCount, fps, scale) {
@@ -60,9 +60,13 @@ export function loadCharacterAnimations() {
   // `scale` is the world size of the character plane per animation, tuned so the
   // visible cat stays the same size despite the cells having different padding.
   return {
-    idle: configureAnim(loader.load(url('black-panther-sitting-and-looking-at-camera-f135.png')), 1, 1, 1, 1, 0.95),
-    walk: configureAnim(loader.load(url('panther-walk.png')), 5, 5, 25, 16, 1.3),
-    jump: configureAnim(loader.load(url('panther-jump.png')), 5, 5, 25, 0, 1.3),
+    idle: configureAnim(loader.load(url('panther-idle.png')), 5, 5, 25, 10, 1.25),
+    walk: configureAnim(loader.load(url('panther-walk.png')), 5, 5, 25, 16, 1.18),
+    jump: configureAnim(loader.load(url('panther-jump.png')), 5, 5, 25, 0, 1.08),
+    attack: configureAnim(loader.load(url('panther-attack.png')), 5, 5, 25, 0, 1.08),
+    charge: configureAnim(loader.load(url('panther-charge.png')), 5, 5, 25, 12, 1.05),
+    death: configureAnim(loader.load(url('panther-death.png')), 5, 5, 25, 12, 1.2),
+    land: configureAnim(loader.load(url('panther-land.png')), 5, 5, 25, 45, 1.15),
   };
 }
 
@@ -233,43 +237,19 @@ export function makeWallSpikeTexture(pointingRight) {
   return pixelTexture(c);
 }
 
-/* ---------- Mid-air Obstacle: pixel-art diving bird of prey ----------
-   16×16 dark winged silhouette with fierce yellow eyes and a hooked beak. */
-export function makeSawTexture() {
-  const size = 16;
-  const c = makeCanvas(size, size);
-  const g = c.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  const r = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
-
-  const DARK = '#241038';   // deep indigo outline
-  const BODY = '#6a34a8';   // vivid purple body
-  const WING = '#9a54e0';   // bright wing / belly highlight
-  const BEAK = '#ff8a1a';   // vivid orange beak + talons
-  const EYE = '#ffe23a';    // bright yellow eyes
-
-  // Spread wings (symmetric), stepped feather tips
-  r(0, 7, 16, 2, DARK);
-  r(1, 6, 4, 1, DARK); r(11, 6, 4, 1, DARK);
-  r(2, 9, 3, 1, DARK); r(11, 9, 3, 1, DARK);
-  // Bright wing streaks
-  r(2, 7, 4, 1, WING); r(10, 7, 4, 1, WING);
-
-  // Body + darker outline edges
-  r(6, 3, 4, 9, BODY);
-  r(5, 6, 1, 5, DARK); r(10, 6, 1, 5, DARK);
-  // Belly highlight
-  r(7, 8, 2, 3, WING);
-  // Head
-  r(6, 3, 4, 2, DARK);
-  r(6, 4, 1, 1, EYE); r(9, 4, 1, 1, EYE);
-  // Hooked beak
-  r(7, 2, 2, 1, BEAK); r(7, 1, 1, 1, BEAK);
-  // Tail + talons
-  r(7, 12, 2, 2, DARK);
-  r(6, 12, 1, 1, BEAK); r(9, 12, 1, 1, BEAK);
-
-  return pixelTexture(c);
+/* ---------- Mid-air Obstacle: hovering eagle (AutoSprite sheets) ----------
+   Same 5×5/256px sheet format as the character. `idle` and `scared` are
+   shared hover-flap loops — one texture write animates every bird in sync
+   (scared plays when an armed Pantho gets close); `death` gets cloned per
+   dying bird so each plays its own knock-out tumble. */
+export function loadEagleAnimations() {
+  const loader = new THREE.TextureLoader();
+  const url = (file) => new URL(`../assets/character/${file}`, import.meta.url).href;
+  return {
+    idle: configureAnim(loader.load(url('eagle-idle.png')), 5, 5, 25, 12, 1),
+    scared: configureAnim(loader.load(url('eagle-scared.png')), 5, 5, 25, 12, 1),
+    death: configureAnim(loader.load(url('eagle-death.png')), 5, 5, 25, 36, 1),
+  };
 }
 
 /* ---------- Background: bright daytime sky ---------- */

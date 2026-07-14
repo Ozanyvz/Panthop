@@ -1,5 +1,5 @@
 import { PanthopGame } from './game.js';
-import { getBest, getRecent, getHighScores, pushScore, pushRecent, addCoins, getCoins, getLeaves, getFeathers, addFeathers, registerSmashes, getSmashTotal, addRun, addJumps, getUpgradeLevel, getSeenUpgrades, markUpgradesSeen, resetProgress } from './storage.js';
+import { getBest, getRecent, getHighScores, pushScore, pushRecent, addCoins, getCoins, getLeaves, getFeathers, addFeathers, registerSmashes, getSmashTotal, addRun, addJumps, getUpgradeLevel, getSeenUpgrades, markUpgradesSeen, resetProgress, getInfinityCount } from './storage.js';
 import {
   UPGRADES,
   nextCost,
@@ -11,6 +11,14 @@ import {
   snapshotModifiers,
   effectParams,
   featherDropPercent,
+  INFINITY_UPGRADES,
+  isMaxed,
+  infinityAvailable,
+  infinityItems,
+  canAffordInfinity,
+  tryPurchaseInfinity,
+  swordChargesPerRun,
+  dodgeChargesPerRun,
 } from './upgrades.js';
 import {
   listAchievements,
@@ -242,8 +250,11 @@ function refreshStartScreen() {
   renderScoreList();
 }
 
-// The Feather (tüy) economy is revealed once the Sharpened Claw is owned.
-function featherUnlocked() { return getUpgradeLevel('sword') >= 1; }
+// The Feather (tüy) economy is revealed once claws are in play — via either
+// the Sharpened Claw (bark) or Pençe Bileme / claw-hone (leaf) upgrade.
+function featherUnlocked() {
+  return getUpgradeLevel('sword') >= 1 || getUpgradeLevel('sprintSmash') >= 1;
+}
 
 // On-hand balance for a currency (drives the start-screen chips + upgrade tabs).
 function currencyBalance(currency) {
@@ -292,8 +303,10 @@ async function renderLangOptions() {
   });
 }
 
-// Three graded audio channels, each a stepped 0..MAX control (0 = off).
+// Graded audio channels, each a stepped 0..MAX control (0 = off). `master`
+// sits on top and scales/mutes the other three from one place.
 const AUDIO_CHANNELS = [
+  { id: 'master', i18nKey: 'settings.master' },
   { id: 'sfx', i18nKey: 'settings.sfx' },
   { id: 'music', i18nKey: 'settings.music' },
   { id: 'ambient', i18nKey: 'settings.ambient' },
@@ -770,20 +783,24 @@ function showGameOver(score, best, isNewBest, previous, newMilestones, newSmashA
 
 /* ---------- Upgrades screen ---------- */
 // Each currency is its own tab; the feather tab stays hidden until unlocked.
+// The Sonsuz (infinity) tab appears once any endless-track upgrade is maxed.
 const UPG_TABS = [
   { id: 'coin', icon: iconHTML('bark'), i18nKey: 'upgrades.tab_coin' },
   { id: 'leaf', icon: iconHTML('leaf'), i18nKey: 'upgrades.tab_leaf' },
   { id: 'feather', icon: iconHTML('feather'), i18nKey: 'upgrades.tab_feather' },
+  { id: 'infinity', icon: iconHTML('infinity'), i18nKey: 'upgrades.tab_infinity' },
 ];
 let activeUpgTab = 'coin';
 
 function tabUnlocked(currency) {
-  return currency === 'feather' ? featherUnlocked() : true;
+  if (currency === 'feather') return featherUnlocked();
+  if (currency === 'infinity') return infinityAvailable();
+  return true;
 }
 
 // A tab is only worth showing if some upgrade actually uses that currency.
-// (Feathers currently have no sink, so their tab stays hidden.)
 function tabHasUpgrades(currency) {
+  if (currency === 'infinity') return true;   // visibility is gated by tabUnlocked
   return UPGRADES.some(u => u.currency === currency);
 }
 
@@ -795,9 +812,17 @@ function upgHidden(def) {
 // Ids of upgrades in a tab the player can buy right now (drives the tab badge).
 function availableIdsInTab(currency) {
   if (!tabUnlocked(currency)) return [];
+  if (currency === 'infinity') {
+    return infinityItems().filter(u => canAffordInfinity(u.id)).map(u => `inf_${u.id}`);
+  }
   return UPGRADES
-    .filter(u => u.currency === currency && !upgHidden(u) && canAfford(u.id))
+    .filter(u => u.currency === currency && !upgHidden(u) && !movedToInfinity(u) && canAfford(u.id))
     .map(u => u.id);
+}
+
+// A maxed endless-track upgrade lives ONLY in the Sonsuz tab from then on.
+function movedToInfinity(def) {
+  return INFINITY_UPGRADES.some(u => u.id === def.id) && isMaxed(def.id);
 }
 
 // Any unlocked-tab upgrade that's available but the player hasn't seen yet.
@@ -823,9 +848,11 @@ function renderUpgTabs() {
     const badge = isNew
       ? `<span class="upg-tab-new">${i18n.t('upgrades.new_badge')}</span>`
       : (availIds.length > 0 ? `<span class="upg-tab-count">${availIds.length}</span>` : '');
+    // The infinity tab has no single currency — its icon stands alone.
+    const bal = tab.id === 'infinity' ? '' : `<span class="upg-tab-bal">${formatCoins(currencyBalance(tab.id))}</span>`;
     btn.innerHTML =
       `<span class="upg-tab-icon">${tab.icon}</span>` +
-      `<span class="upg-tab-bal">${formatCoins(currencyBalance(tab.id))}</span>` +
+      bal +
       badge;
     btn.addEventListener('click', () => {
       if (activeUpgTab === tab.id) return;
@@ -949,11 +976,24 @@ function upgItemMarkup(def) {
 
 function renderUpgradesList() {
   upgListEl.innerHTML = '';
+  if (activeUpgTab === 'infinity') {
+    for (const u of infinityItems()) {
+      const { cls, html } = infinityItemMarkup(u);
+      const li = document.createElement('li');
+      li.className = cls;
+      li.dataset.id = u.id;   // tapping the card opens its info modal
+      li.innerHTML = html;
+      upgListEl.appendChild(li);
+    }
+    return;
+  }
   for (const def of UPGRADES) {
     if (def.currency !== activeUpgTab) continue;
     // Sprint's children stay hidden until Sprint is owned; flagged items
     // (Focus) instead preview themselves in a locked state.
     if (upgHidden(def)) continue;
+    // Maxed endless tracks (claw/dodge) have moved to the Sonsuz tab.
+    if (movedToInfinity(def)) continue;
     const { cls, html } = upgItemMarkup(def);
     const li = document.createElement('li');
     li.className = cls;
@@ -963,12 +1003,44 @@ function renderUpgradesList() {
   }
 }
 
+// Sonsuz card: flat price, endless +1 charges. Shows the ability's live total
+// (including previous +1s) and how many endless buys were made so far.
+function infinityItemMarkup(u) {
+  const total = u.id === 'sword' ? swordChargesPerRun() : dodgeChargesPerRun();
+  const count = getInfinityCount(u.id);
+  const afford = canAffordInfinity(u.id);
+  const curIcon = currencyIcon(u.currency);
+  const cls = 'upg-item' + (afford ? ' affordable' : '');
+  return { cls, html: `
+    <div class="upg-icon">${u.icon}</div>
+    <div class="upg-body">
+      <div class="upg-name">${i18n.t(`${u.i18nKey}.name`)}</div>
+      <div class="upg-stats">
+        <div class="upg-stat upg-stat-now">
+          <span class="upg-stat-label">${i18n.t('upgrades.now_label')}</span>
+          <span class="upg-stat-val">${i18n.t(`${u.i18nKey}.effect`, { n: total })}</span>
+        </div>
+        <div class="upg-stat upg-stat-next">
+          <span class="upg-stat-label">${i18n.t('upgrades.next_label')}</span>
+          <span class="upg-stat-val">${i18n.t(`${u.i18nKey}.effect`, { n: total + 1 })}</span>
+        </div>
+      </div>
+      <div class="upg-level-row">
+        <span class="upg-level-text">${iconHTML('infinity')} +${count}</span>
+      </div>
+    </div>
+    <button class="upg-buy" data-id="${u.id}" data-inf="1" ${afford ? '' : 'disabled'}>
+      <span class="upg-buy-cost">${curIcon} ${u.cost}</span><span class="upg-buy-label">+1</span>
+    </button>
+  ` };
+}
+
 upgListEl?.addEventListener('click', (e) => {
   const btn = e.target.closest('.upg-buy');
   if (btn) {
     if (btn.disabled) return;
     const id = btn.dataset.id;
-    const result = tryPurchase(id);
+    const result = btn.dataset.inf ? tryPurchaseInfinity(id) : tryPurchase(id);
     audio.sfx(result.ok ? 'purchase' : 'purchaseFail');
     if (result.ok) {
       vibrate(20);
@@ -1048,7 +1120,9 @@ function renderAchievements() {
     grid.className = 'ach-grid';
     for (const st of items) {
       const tile = document.createElement('button');
-      let cls = `ach-tile ach-${st.def.group}`;
+      // Tint follows the reward currency (leaf/coin/feather; gray when reward-less).
+      const rewardCls = st.def.reward ? `ach-reward-${st.def.reward.currency}` : 'ach-reward-none';
+      let cls = `ach-tile ach-${st.def.group} ${rewardCls}`;
       cls += st.unlocked ? ' unlocked' : ' locked';
       if (st.collectible) cls += ' collectible';
       else if (st.collected) cls += ' collected';
@@ -1073,7 +1147,8 @@ function stateById(id) {
 
 function renderAchModal(st) {
   const { def } = st;
-  achModalMedal.className = `ach-modal-medal ach-${def.group} ${st.unlocked ? 'unlocked' : 'locked'}`;
+  const medalReward = def.reward ? `ach-reward-${def.reward.currency}` : 'ach-reward-none';
+  achModalMedal.className = `ach-modal-medal ${medalReward} ${st.unlocked ? 'unlocked' : 'locked'}`;
   achModalIcon.innerHTML = st.unlocked ? def.icon : iconHTML('lock');
   achModalName.textContent = achName(def);
   achModalDesc.textContent = achDesc(def);
@@ -1244,17 +1319,38 @@ function bumpFeatherRunChip() {
   featherRunChip.classList.add('slash');
 }
 
-// Floating "+1 🪶" that fades up from a smashed bird's screen position.
-function popFeather(sp) {
-  if (!sp || !gameFrame) return;
-  const el = document.createElement('div');
-  el.className = 'feather-pop';
-  el.innerHTML = `+1 <span class="fp-icon gi gi-feather" aria-hidden="true"></span>`;
-  el.style.left = `${sp.x}px`;
-  el.style.top = `${sp.y}px`;
+// "+1 <icon>" gain effect in two phases: first it fades in and drifts gently
+// upward right where it was earned (the old float-pop look), then it arcs up
+// to its HUD chip and onArrive commits the new count + bumps the chip. Falls
+// back to running onArrive immediately when the flight can't be measured.
+const HUD_FLOAT_MS = 450;   // phase 1: gentle rise at the pickup point
+const HUD_FLY_MS = 550;     // phase 2: travel to the chip
+function flyIconToChip(iconKey, sp, chipEl, onArrive) {
+  if (!sp || !gameFrame || !chipEl) { onArrive?.(); return; }
+  const frameRect = gameFrame.getBoundingClientRect();
+  const chipRect = chipEl.getBoundingClientRect();
+  if (!chipRect.width || !frameRect.width) { onArrive?.(); return; }
+  const tx = chipRect.left - frameRect.left + chipRect.width / 2;
+  const ty = chipRect.top - frameRect.top + chipRect.height / 2;
+  const el = document.createElement('span');
+  el.className = 'hud-fly';
+  el.innerHTML = `+1 <span class="gi gi-${iconKey}" aria-hidden="true"></span>`;
   gameFrame.appendChild(el);
-  el.addEventListener('animationend', () => el.remove(), { once: true });
-  setTimeout(() => el.remove(), 1300);   // safety cleanup
+  let done = false;
+  const finish = () => { if (done) return; done = true; el.remove(); onArrive?.(); };
+  const total = HUD_FLOAT_MS + HUD_FLY_MS;
+  const p1 = HUD_FLOAT_MS / total;             // where phase 1 ends
+  const riseY = sp.y - 34;                     // how high the float drifts
+  const midX = (sp.x + tx) / 2;
+  const midY = Math.min(riseY, ty) - 30;       // arc over the flight path
+  el.animate([
+    { transform: `translate(${sp.x}px, ${sp.y}px) scale(0.6)`, opacity: 0, offset: 0 },
+    { transform: `translate(${sp.x}px, ${sp.y - 14}px) scale(1.15)`, opacity: 1, offset: 0.12 },
+    { transform: `translate(${sp.x}px, ${riseY}px) scale(1)`, opacity: 1, offset: p1, easing: 'ease-in' },
+    { transform: `translate(${midX}px, ${midY}px) scale(0.95)`, opacity: 1, offset: p1 + (1 - p1) * 0.5 },
+    { transform: `translate(${tx}px, ${ty}px) scale(0.6)`, opacity: 0.95, offset: 1 },
+  ], { duration: total, easing: 'ease-in-out' }).onfinish = finish;
+  setTimeout(finish, total + 150);   // safety cleanup
 }
 
 // One bird killed: count it for the smash achievements, then roll a 0–100 dice —
@@ -1265,9 +1361,14 @@ function registerKill(sp) {
   const roll = Math.floor(Math.random() * 101);   // 0–100 inclusive
   if (roll <= runFeatherThreshold) {
     runFeathers += 1;
-    setFeatherRunHUD(runFeathers);   // show this run's feather tally in the HUD
-    bumpFeatherRunChip();
-    popFeather(sp);
+    // Reveal the chip at its pre-gain count so the feather has somewhere to
+    // land; the new tally commits when the flight arrives.
+    if (featherRunValEl) featherRunValEl.textContent = runFeathers - 1;
+    featherRunChip?.classList.remove('hidden');
+    flyIconToChip('feather', sp, featherRunChip, () => {
+      setFeatherRunHUD(runFeathers);
+      bumpFeatherRunChip();
+    });
     audio.sfx('feather');
     vibrate(15);
   }
@@ -1295,14 +1396,28 @@ function ensureGame() {
       scoreValue.classList.add('bump');
       audio.gameTier(s);   // crossfade game music up a tier as difficulty climbs
     },
-    onSwordCharges: (n) => setSwordHUD(n),
+    onSwordCharges: (n, gained, sp) => {
+      if (gained) {
+        // A claw honed by a full sprint charge: collect chime + icon flight
+        // down to the ability chip; the count commits on arrival.
+        audio.sfx('rewardCollect');
+        swordChargesEl.textContent = Math.max(0, n - 1);
+        swordChip.classList.remove('hidden');
+        refreshAbilityBar();
+        flyIconToChip('claw', sp, swordChip, () => {
+          setSwordHUD(n);
+          bumpSwordChip();
+        });
+      } else {
+        setSwordHUD(n);
+      }
+    },
     onSwordSlash: (n, sp) => {
       setSwordHUD(n);
       bumpSwordChip();
       vibrate(25);
       registerKill(sp);    // a shredded bird may drop a feather
     },
-    onSprintSmash: (sp) => { vibrate(25); registerKill(sp); },
     onJump: () => { runJumps += 1; },   // banked into the lifetime jump total at game over
     onDodgeCharges: (n) => setDodgeHUD(n),
     onDodge: (n) => { setDodgeHUD(n); bumpDodgeChip(); vibrate([0, 30, 30, 30]); },
