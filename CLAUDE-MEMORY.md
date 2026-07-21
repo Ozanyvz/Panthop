@@ -6,7 +6,7 @@
 > **Başka bilgisayarda kullanım:** Claude'a şunu yaz:
 > "CLAUDE-MEMORY.md dosyasındaki hafıza kayıtlarını kalıcı hafızana aktar — her bölümü kendi dosya adıyla memory klasörüne yaz ve MEMORY.md indeksini oluştur."
 >
-> Son güncelleme: 2026-07-14
+> Son güncelleme: 2026-07-15
 
 ---8<--- dosya: MEMORY.md ---
 
@@ -18,7 +18,7 @@
 - [Pixel fontlar + ASCII kuralı](project_pixel_fonts.md) — Press Start 2P (başlık) + VT323 (gövde), yerel gömülü; tr.json TAM ASCII, yeni metinde Türkçe karakter koyma
 - [Google servisleri (AdMob + Play Games)](project_google_services.md) — servis katmanı facade'i (js/services/), registerPlugin+importmap, oyun sonu kabuk 2x reklamı, başarım aynalama; Saved Games ertelendi; release öncesi gerçek ID TODO'ları
 - [Pixel-art SVG ikon sistemi](project_icons.md) — tüm emoji yerel SVG ile değişti (.gi/.gi-* + iconHTML); tools/gen-icons.mjs ASCII-ızgaradan üretir; cihaz uyumu için, yeni ikon eklerken bu yöntemi kullan, emoji koyma
-- [Ses sistemi](project_audio.md) — js/audio.js tek giriş; SFX WebAudio + müzik HTMLAudio; 4 kademeli oyun müziği (skor 50/100/150, zorluk rampasıyla senkron); Ayarlarda ANA SES + 3 kanal; score-tick & ambient bilerek kullanılmıyor
+- [Ses sistemi](project_audio.md) — js/audio.js tek giriş; SFX WebAudio + müzik HTMLAudio; 4 kademeli oyun müziği (skor 50/100/150, zorluk rampasıyla senkron); Ayarlarda ANA SES + 3 kanal; ElevenLabs SFX üretici (tools/gen-sfx-elevenlabs.mjs, key .env'de); kartal çığlık/ölüm sesleri bağlı
 - [iOS/App Store sureci](project_ios_appstore.md) - Mac mini'de Xcode build; package.json+BUILD.md iOS hazir; Developer uyeligi/AdMob iOS ID/Game Center ID'leri acik
 - [Hafıza yedeği CLAUDE-MEMORY.md](feedback_memory_export.md) — repo kökündeki dosya hafızanın dışa aktarımı; hafıza her değiştiğinde yeniden üret (kullanıcı diğer bilgisayarda içe aktarıyor)
 - [AutoSprite MCP](reference_autosprite.md) — Pantho karakter ID + üretim maliyetleri + prompt dersleri (tek karakter vurgusu, ölüm=düşme, koşu=tüm gövde); tüm sheet'ler yeni stilde, land dahil bağlı
@@ -130,7 +130,11 @@ Oyuna tum sesler eklendi (2026-06-14). Tek giris noktasi `js/audio.js`:
 - **Muzik**: HTMLAudioElement (akis + JS volume crossfade, MUSIC_VOL 0.5). `playMusic`, `stopMusic`, `gameTier(score)`.
 - **Ambiyans**: `ambient.wav` ayri loop'ta, HER YERDE surekli calar (menu + oyun + oyun sonu), muzik track'inden bagimsiz. unlock'ta baslar (AMBIENT_VOL 0.45).
 - **Unlock**: tarayici autoplay kilidi -> AudioContext suspended olusturulur, ilk pointer/key/touch hareketinde resume + ambiyans + bekleyen muzik baslar.
-- Dosyalar `assets/sfx/` altinda: SFX `.wav`, muzik `.mp3`. SFX map'inde `land` -> [land.wav, land2.wav] rastgele varyant.
+- Dosyalar `assets/sfx/` altinda: eski SFX `.wav`, muzik `.mp3`, yeni ElevenLabs SFX'leri `.mp3` (decodeAudioData ikisini de cozer, uzanti onemsiz). SFX map'inde `land` -> [land.wav, land2.wav] rastgele varyant.
+
+**ElevenLabs SFX uretim hatti (2026-07-15):** `tools/gen-sfx-elevenlabs.mjs` — `/v1/sound-generation` API'sine baglanir; icinde tum sesler icin Ingilizce prompt tablosu (isim/sure/prompt_influence). API anahtari repo kokunde `.env` (`ELEVENLABS_API_KEY=...`, gitignore'da — DIGER MAKINEDE YENIDEN EKLENMELI, repo/hafizaya yazilmaz; kullanicinin plani creator, ~230k kredi/ay). Ciktilar `sfx-workshop/` (gitignore + build disi) altina `.mp3` yazilir, mevcutlarin ustune yazmaz; begenilen elle `assets/sfx/`e kopyalanip SFX map guncellenir. Komutlar: isim listesi bos cagri, `--missing`, `--all`, `--takes N` (varyant), `--quota`. Loop calan sesler (climb, sprint-charge) uretimde bas/son kirpma ister. Muzik (bgm) bu API ile uretilemez.
+
+**Kartal sesleri (2026-07-15, ElevenLabs ile uretildi):** `eagleScreech` (eagle-screech.mp3) — pence stoklu Pantho BIRD_FEAR_RANGE'e ilk girdiginde kus basina BIR kez (game.js `o.screeched` bayragi, `_addMidairObstacle`'da reset, vol 0.8). `eagleDeath` (eagle-death.mp3) — `_spawnDyingBird` icinde swordSlash'in altina katman (vol 0.9). Ikiser varyant uretildi, t2'ler sfx-workshop'ta (yerel) duruyor. **Prompt dersi:** "sharp/screech/aggressive" kelimeleri cirtlak-tiz cikti verdi (kullanici reddetti) → "realistic low-pitched raspy, deep smooth natural, soft onset, warm round tone, no shrill high frequencies" + inf 0.45 ile yumusatildi; yeni SFX promptlarinda tiz/keskin sifatlardan kacin.
 
 **Oyun muzigi 4 kademe** (engel-tempo bantlariyla eslesir): `gameTier(score)` -> skor >=150 g4, >=100 g3, >=50 g2, yoksa g1 (2026-07-10: zorluk rampasi ~200 skora yayildi — game.js SPACING_SHRINK_PER_SCORE 0.005 / MIDAIR_CHANCE_GROWTH 0.0015 — muzik esikleri rampanin ceyrek noktalari; rampa degisirse ikisini birlikte guncelle). Menude `bgm-menu`. Oyun sonu `stopMusic()` + stinger'lar.
 
@@ -142,7 +146,7 @@ Oyuna tum sesler eklendi (2026-06-14). Tek giris noktasi `js/audio.js`:
 
 SW VERSION wj-v44, `js/audio.js` shell precache'te. Kaynak duzenlenir, `npm run build` dist'i uretir.
 
-**Bilerek kullanilmayan**: sadece `score-tick.wav` (her +1, jump sesiyle cakisir). `ambient.wav` artik her yerde loop calar.
+**Not (2026-07-15 duzeltme):** `score-tick.wav` ARTIK KULLANILIYOR (game.js — puan grip sesiyle birlikte her ziplamada). `ambient.wav` her yerde loop calar. Yani su an kullanilmayan ses yok.
 ```
 
 ---8<--- dosya: project_economy.md ---

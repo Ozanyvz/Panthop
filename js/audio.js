@@ -40,6 +40,8 @@ const SFX = {
   sprintCharge: 'sprint-charge.wav',
   sprintReady: 'sprint-ready.wav',
   death: 'death.wav',
+  eagleScreech: 'eagle-screech.mp3',
+  eagleDeath: 'eagle-death.mp3',
   swordSlash: 'sword-slash.wav',
   sprintSmash: 'sprint-smash.wav',
   dodge: 'dodge.wav',

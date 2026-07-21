@@ -772,6 +772,11 @@ export class PanthopGame {
         o.mesh.rotation.z = Math.sin(this._obsTime * 5 + o.y) * 0.18;
         const dx = o.x - chX, dy = o.y - chY;
         const afraid = clawArmed && (dx * dx + dy * dy) < BIRD_FEAR_RANGE * BIRD_FEAR_RANGE;
+        // One screech per bird, the first time a claw-armed Pantho gets close.
+        if (afraid && !o.screeched) {
+          o.screeched = true;
+          audio.sfx('eagleScreech', { volume: 0.8 });
+        }
         const wantTex = afraid ? birdScared.texture : birdIdle.texture;
         if (o.mesh.material.map !== wantTex) {
           o.mesh.material.map = wantTex;
@@ -881,6 +886,7 @@ export class PanthopGame {
     o.y = y;
     o.hitW = BIRD_HITBOX;
     o.hitH = BIRD_HITBOX;
+    o.screeched = false;
     this.scene.add(o.mesh);
     this.obstacles.push(o);
   }
@@ -982,6 +988,7 @@ export class PanthopGame {
     mesh.renderOrder = this._ro.obstacle;
     this.scene.add(mesh);
     this.dyingBirds.push({ mesh, anim, t: 0 });
+    audio.sfx('eagleDeath', { volume: 0.9 });   // squawk layered under the slash
   }
 
   // World point → canvas pixel coords (for HUD overlays anchored to the world).

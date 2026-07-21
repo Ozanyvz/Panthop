@@ -1,9 +1,11 @@
 node_modules/
 dist/
+sfx-workshop/
 
-# İmzalama anahtarları asla commit edilmez
+# İmzalama anahtarları ve API anahtarları asla commit edilmez
 *.jks
 *.keystore
+.env
 
 # OS / editor noise
 .DS_Store
