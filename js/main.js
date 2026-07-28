@@ -48,6 +48,7 @@ const REVEAL_FLY_DUR = 560;       // a "+N" token's flight from the reveal frame
 let goRevealTimers = [];          // pending stage timers
 let goRevealFinalize = null;      // jumps the whole sequence to its end (tap to skip)
 let goRevealDone = true;
+let goCtx = null;                 // current game-over reveal context (kept in sync after a rewarded grant)
 const earnedRaf = new Map();      // per-element count-up handles
 
 const canvas = document.getElementById('game-canvas');
@@ -584,6 +585,19 @@ function upgAvailableState() {
   return { any, hasNew: any && hasUnseenUpgrade() };
 }
 
+// Re-check the offer after the wallet grew while the game-over screen is up (the
+// rewarded 2x grant). The button was staged from the pre-ad wallet, so bark that
+// just landed can newly afford an upgrade — surface it instead of leaving the
+// player on a screen that claims nothing is buyable.
+function refreshUpgAvailable() {
+  const upg = upgAvailableState();
+  if (goCtx) goCtx.upg = upg;   // keep tap-to-skip in sync with the new wallet
+  upgNewBadge?.classList.toggle('hidden', !upg.hasNew);
+  // Already in the layout (staged or shown)? The reveal sequence owns it from here.
+  if (!upg.any || !upgAvailableBtn.classList.contains('hidden')) return;
+  revealEl(upgAvailableBtn);
+}
+
 /* ---------- Game-over staged reveal ----------
    Cards appear one after another (score → milestone → collected bark/feather →
    upgrade button → retry/home). Tapping the screen jumps to the final state. */
@@ -593,6 +607,7 @@ function clearGoRevealTimers() {
 }
 
 function startGameOverReveal(ctx) {
+  goCtx = ctx;
   clearGoRevealTimers();
   goRevealDone = false;
 
@@ -1285,6 +1300,9 @@ function setSwordHUD(n) {
 }
 
 function bumpSwordChip() {
+  // A gain flight can land after the charge was already spent — don't pulse an
+  // empty (hidden) chip.
+  if (swordChip.classList.contains('hidden')) return;
   swordChip.classList.remove('slash');
   void swordChip.offsetWidth;
   swordChip.classList.add('slash');
@@ -1313,7 +1331,7 @@ function setFeatherRunHUD(n) {
 }
 
 function bumpFeatherRunChip() {
-  if (!featherRunChip) return;
+  if (!featherRunChip || featherRunChip.classList.contains('hidden')) return;
   featherRunChip.classList.remove('slash');
   void featherRunChip.offsetWidth;
   featherRunChip.classList.add('slash');
@@ -1321,8 +1339,9 @@ function bumpFeatherRunChip() {
 
 // "+1 <icon>" gain effect in two phases: first it fades in and drifts gently
 // upward right where it was earned (the old float-pop look), then it arcs up
-// to its HUD chip and onArrive commits the new count + bumps the chip. Falls
-// back to running onArrive immediately when the flight can't be measured.
+// to its HUD chip. Purely cosmetic — the counters are already committed by the
+// time this runs, so a flight that lands late can never rewrite a spent count.
+// onArrive only pulses the chip (it runs at once when the flight can't be measured).
 const HUD_FLOAT_MS = 450;   // phase 1: gentle rise at the pickup point
 const HUD_FLY_MS = 550;     // phase 2: travel to the chip
 function flyIconToChip(iconKey, sp, chipEl, onArrive) {
@@ -1361,14 +1380,9 @@ function registerKill(sp) {
   const roll = Math.floor(Math.random() * 101);   // 0–100 inclusive
   if (roll <= runFeatherThreshold) {
     runFeathers += 1;
-    // Reveal the chip at its pre-gain count so the feather has somewhere to
-    // land; the new tally commits when the flight arrives.
-    if (featherRunValEl) featherRunValEl.textContent = runFeathers - 1;
-    featherRunChip?.classList.remove('hidden');
-    flyIconToChip('feather', sp, featherRunChip, () => {
-      setFeatherRunHUD(runFeathers);
-      bumpFeatherRunChip();
-    });
+    // Tally commits immediately (see onSwordCharges); the flight is decoration.
+    setFeatherRunHUD(runFeathers);
+    flyIconToChip('feather', sp, featherRunChip, bumpFeatherRunChip);
     audio.sfx('feather');
     vibrate(15);
   }
@@ -1397,19 +1411,14 @@ function ensureGame() {
       audio.gameTier(s);   // crossfade game music up a tier as difficulty climbs
     },
     onSwordCharges: (n, gained, sp) => {
+      // The count commits right now, never on flight arrival: a claw honed by a
+      // sprint charge can be spent on a bird before its icon lands, and a
+      // deferred commit would resurrect the already-spent claw on the HUD.
+      setSwordHUD(n);
       if (gained) {
-        // A claw honed by a full sprint charge: collect chime + icon flight
-        // down to the ability chip; the count commits on arrival.
         audio.sfx('rewardCollect');
-        swordChargesEl.textContent = Math.max(0, n - 1);
-        swordChip.classList.remove('hidden');
-        refreshAbilityBar();
-        flyIconToChip('claw', sp, swordChip, () => {
-          setSwordHUD(n);
-          bumpSwordChip();
-        });
-      } else {
-        setSwordHUD(n);
+        // Purely decorative flight down to the ability chip.
+        flyIconToChip('claw', sp, swordChip, bumpSwordChip);
       }
     },
     onSwordSlash: (n, sp) => {
@@ -1568,7 +1577,7 @@ reward2xBtn?.addEventListener('click', async () => {
   if (bonus <= 0) return;
   reward2xBtn.classList.add('is-busy');
 
-  audio.suspendForAd();   // pause music/ambience so the ad's sound plays alone
+  audio.suspend();   // pause music/ambience so the ad's sound plays alone
   const rewarded = await showRewarded();
   if (!rewarded) {
     audio.resume();
@@ -1602,7 +1611,11 @@ reward2xBtn?.addEventListener('click', async () => {
       void barkEarnedEl.offsetWidth;
       barkEarnedEl.classList.add('bump');
     }
-    walletEarn(gameOverScreen, reward2xBtn, gwBarkItem, gwBarkVal, pre, total, `+${bonus}`, 'coin');
+    flyToWallet(gameOverScreen, reward2xBtn, gwBarkItem, `+${bonus}`, 'coin', () => {
+      landInWallet(gwBarkItem, gwBarkVal, pre, total);
+      // The doubled bark may have just made an upgrade affordable.
+      refreshUpgAvailable();
+    });
   }));
   refreshRewardAd();
 });
@@ -1691,6 +1704,22 @@ document.addEventListener('keydown', (e) => {
   else if (!pauseOverlay.classList.contains('hidden')) resumeGame();
   else if (!achievementsScreen.classList.contains('hidden')) hideAchievementsScreen();
   else if (game && game.running && !hud.classList.contains('hidden')) pauseGame();   // pause mid-run
+});
+
+// Auto-pause + mute when the app goes to the background (mobile: minimized,
+// app-switched, or screen off — all fire visibilitychange). Otherwise HTMLAudio
+// music/ambience keep playing and an active run keeps its state; both restore on
+// return. The run is NOT auto-resumed — the pause overlay stays up for the player.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (game && game.running && !hud.classList.contains('hidden')
+        && pauseOverlay.classList.contains('hidden')) {
+      pauseGame();
+    }
+    audio.suspend();          // silence music + ambience while hidden
+  } else {
+    audio.resume();           // re-arm the audio ctx / music / ambience on return
+  }
 });
 
 i18n.onChange(() => {

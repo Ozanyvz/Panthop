@@ -346,13 +346,18 @@ export function stopMusic() {
   if (rec) fadeTrack(rec, 0, () => rec.el.pause());
 }
 
-// Silence the long-running audio before a fullscreen rewarded ad so the ad's
-// own sound doesn't play on top of it; resume() re-arms everything after.
-export function suspendForAd() {
+// Silence the long-running audio (music + ambience). Used before a fullscreen
+// rewarded ad and when the app goes to the background; resume() re-arms it after.
+// Pauses EVERY music track, not just the current one: a tier→menu switch may
+// leave the outgoing track mid-fade, and its fade won't progress while hidden.
+export function suspend() {
   stopCharge();
   stopClimb();
-  const rec = curMusicKey ? musicEls.get(curMusicKey) : null;
-  if (rec) { rec.fadeId++; clearTimeout(rec.stopTimer); rec.el.pause(); }
+  for (const rec of musicEls.values()) {
+    rec.fadeId++;                 // cancel any in-flight fade tween
+    clearTimeout(rec.stopTimer);  // and its pending pause-after-fade
+    rec.el.pause();
+  }
   if (ambientRec) ambientRec.el.pause();
 }
 
