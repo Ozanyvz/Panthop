@@ -140,6 +140,11 @@
     "group_smash": "PARCALAMA",
     "group_runs": "TURLAR",
     "group_jumps": "ZIPLAMALAR",
+    "group_time": "OYUN SURESI",
+    "group_runtime": "HAYATTA KALMA",
+    "unit_s": "sn",
+    "unit_m": "dk",
+    "unit_h": "sa",
     "reward_label": "ODUL",
     "collect": "TOPLA",
     "locked": "KILITLI",
@@ -154,6 +159,10 @@
     "runs_desc": "Toplam {n} tur oyna.",
     "jumps_name": "{n} Ziplama",
     "jumps_desc": "Toplam {n} kez zipla.",
+    "time_name": "{n} Oyun Suresi",
+    "time_desc": "Toplam {n} boyunca oyna.",
+    "runtime_name": "{n} Hayatta Kalma",
+    "runtime_desc": "Tek bir kosuda {n} boyunca hayatta kal.",
     "empty": "Henuz basarim yok"
   }
 }

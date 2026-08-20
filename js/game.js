@@ -355,6 +355,13 @@ export class PanthopGame {
     this.holdTime = 0;
     this.isSprintJump = false;
     this._sprintReadyPlayed = false;
+    // Run clock: seconds survived. It only starts ticking on the first jump —
+    // standing on the ground in READY is an untimed lobby, so a player parked
+    // there can't farm the play-time achievements. pause() stops the loop, so
+    // paused seconds are excluded for free.
+    this.runTime = 0;
+    this.timeRunning = false;
+    this._lastWholeSec = -1;
     audio.stopCharge();
     audio.stopClimb();
     if (this.chargeRing) this.chargeRing.visible = false;
@@ -384,6 +391,13 @@ export class PanthopGame {
     this._fitBackground();
 
     if (this.callbacks.onScore) this.callbacks.onScore(0);
+    if (this.callbacks.onTime) this.callbacks.onTime(0);
+  }
+
+  // Seconds survived in the current run (banked into the lifetime totals at
+  // game over, and the basis for the survival achievements).
+  getRunTime() {
+    return this.runTime;
   }
 
   start() {
@@ -445,10 +459,12 @@ export class PanthopGame {
     // and must never eat player input.
     else if (this.state === STATE.CLIMB || this.state === STATE.LAND) this._beginJump(wasSprinting);
     else return;   // mid-jump release performs no new jump
-    if (this.callbacks.onJump) this.callbacks.onJump();
+    // Stamp the jump with the run's own clock — the opening jump lands at 0.
+    if (this.callbacks.onJump) this.callbacks.onJump(this.runTime);
   }
 
   _beginStartJump() {
+    this.timeRunning = true;     // the run clock starts with the first jump
     this.camIntroGlide = true;   // first jump: ease the intro camera into follow mode
     // First jump: from ground center → left wall at a slightly higher y
     this.state = STATE.JUMP;
@@ -661,6 +677,18 @@ export class PanthopGame {
   };
 
   _update(dt) {
+    // Advance the run clock before anything else, so a jump registered this
+    // frame is stamped with the time it actually happened at. Death stops it:
+    // the KO fall is an outro, not survived time.
+    if (this.timeRunning && this.state !== STATE.DEAD) {
+      this.runTime += dt;
+      const whole = Math.floor(this.runTime);
+      if (whole !== this._lastWholeSec) {
+        this._lastWholeSec = whole;
+        if (this.callbacks.onTime) this.callbacks.onTime(whole);
+      }
+    }
+
     if (this.state === STATE.READY) {
       // Waiting on the ground: the mesh holds still — all idle motion
       // (breathing, tail sway, blinks) lives in the sprite sheet itself.
@@ -688,10 +716,11 @@ export class PanthopGame {
           this.charBobPhase += dt * 10 * SPRINT_MULT;
           this.character.rotation.z = climbRot + Math.sin(this.charBobPhase) * 0.05;
         } else {
-          // Paused / charging: hold position with a small charge wiggle (no steps)
+          // Paused / charging: hold still (no steps) — the tense-crouch sheet
+          // carries all the motion on its own.
           audio.stopClimb();
           audio.startCharge();
-          this.character.rotation.z = climbRot + Math.sin(this.holdTime * 28) * 0.04;
+          this.character.rotation.z = climbRot;
         }
       } else {
         // Normal climb: steady footsteps.

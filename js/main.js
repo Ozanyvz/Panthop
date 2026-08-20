@@ -1,5 +1,5 @@
 import { PanthopGame } from './game.js';
-import { getBest, getRecent, getHighScores, pushScore, pushRecent, addCoins, getCoins, getLeaves, getFeathers, addFeathers, registerSmashes, getSmashTotal, addRun, addJumps, getUpgradeLevel, getSeenUpgrades, markUpgradesSeen, resetProgress, getInfinityCount } from './storage.js';
+import { getBest, getRecent, getHighScores, pushScore, pushRecent, addCoins, getCoins, getLeaves, getFeathers, addFeathers, registerSmashes, getSmashTotal, addRun, addJumps, addPlayTime, recordRunLog, getUpgradeLevel, getSeenUpgrades, markUpgradesSeen, resetProgress, getInfinityCount } from './storage.js';
 import {
   UPGRADES,
   nextCost,
@@ -27,6 +27,7 @@ import {
   collectAchievement,
   newlyUnlockedSmashAchievements,
   ACH_GROUPS,
+  TIME_GROUPS,
   REWARD_ICONS,
 } from './achievements.js';
 import * as i18n from './i18n.js';
@@ -61,6 +62,7 @@ const dodgeChip = document.getElementById('dodge-chip');
 const dodgeChargesEl = document.getElementById('dodge-charges');
 const featherRunChip = document.getElementById('feather-run-chip');
 const featherRunValEl = document.getElementById('feather-run-val');
+const timeValueEl = document.getElementById('time-value');
 const hudBottomBar = document.querySelector('.hud-bottom');
 const pauseBtn = document.getElementById('pause-btn');
 const pauseOverlay = document.getElementById('pause-overlay');
@@ -164,6 +166,8 @@ let runSmashes = 0;       // mid-air obstacles destroyed this run → smash achi
 let runFeathers = 0;          // feathers rolled from this run's kills → banked at game over
 let runFeatherThreshold = 20; // 0–100 dice threshold for a feather drop, snapshot at run start
 let runJumps = 0;         // jumps performed this run → banked into the lifetime jump total
+let runJumpTimes = [];    // second of the run each jump happened on → per-run log
+let runStartedAt = 0;     // wall-clock (epoch ms) the run began → per-run log
 
 /* ---------- Screen management ---------- */
 function show(el) { el.classList.remove('hidden'); }
@@ -1092,15 +1096,23 @@ upgModalOverlay?.addEventListener('click', (e) => {
    A grid of square tiles per group. Locked tiles read gray; an unlocked tile
    with an uncollected reward shows a star. Tapping a tile opens a modal that
    reads out the achievement and lets the player collect its reward. */
+// Time groups carry seconds, so their {n} is a formatted duration ("10dk"),
+// not a raw count.
+function achThresholdText(def) {
+  return TIME_GROUPS.has(def.group) ? fmtDurationShort(def.threshold) : def.threshold;
+}
+
 function achName(def) {
-  return i18n.t(`achievements.${def.group}_name`, { n: def.threshold });
+  return i18n.t(`achievements.${def.group}_name`, { n: achThresholdText(def) });
 }
 
 function achDesc(def) {
-  return i18n.t(`achievements.${def.group}_desc`, { n: def.threshold });
+  return i18n.t(`achievements.${def.group}_desc`, { n: achThresholdText(def) });
 }
 
-function achTileNum(n) {
+function achTileNum(def) {
+  if (TIME_GROUPS.has(def.group)) return fmtDurationShort(def.threshold);
+  const n = def.threshold;
   return n >= 1000 ? `${n / 1000}K` : String(n);
 }
 
@@ -1146,7 +1158,7 @@ function renderAchievements() {
       tile.innerHTML =
         (st.collectible ? '<span class="ach-star">★</span>' : '') +
         `<span class="ach-tile-icon">${st.unlocked ? st.def.icon : iconHTML('lock')}</span>` +
-        `<span class="ach-tile-num">${achTileNum(st.def.threshold)}</span>`;
+        `<span class="ach-tile-num">${achTileNum(st.def)}</span>`;
       grid.appendChild(tile);
     }
     section.appendChild(grid);
@@ -1170,10 +1182,13 @@ function renderAchModal(st) {
 
   // Progress bar — only meaningful while still locked.
   const pct = Math.round(Math.min(1, st.progress / st.target) * 100);
-  const cur = Math.min(st.progress, st.target);
+  const capped = Math.min(st.progress, st.target);
+  const isTime = TIME_GROUPS.has(def.group);
+  const cur = isTime ? fmtClock(capped) : capped;
+  const tgt = isTime ? fmtClock(st.target) : st.target;
   achModalProgress.innerHTML =
     `<span class="ach-prog-bar"><span class="ach-prog-fill" style="width:${pct}%"></span></span>` +
-    `<span class="ach-prog-text">${i18n.t('achievements.progress', { cur, tgt: st.target })}</span>`;
+    `<span class="ach-prog-text">${i18n.t('achievements.progress', { cur, tgt })}</span>`;
   achModalProgress.classList.toggle('hidden', st.unlocked);
 
   // Reward row only for achievements that actually grant one.
@@ -1323,6 +1338,32 @@ function bumpDodgeChip() {
   dodgeChip.classList.add('slash');
 }
 
+/* ---------- Durations ----------
+   fmtClock is the running HUD readout (m:ss, h:mm:ss past an hour).
+   fmtDurationShort is the compact form the achievement tiles/labels use, and
+   goes through i18n so the unit suffixes translate. */
+function fmtClock(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
+}
+
+function fmtDurationShort(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  if (s < 60) return `${s}${i18n.t('achievements.unit_s')}`;
+  if (s < 3600) return `${Math.floor(s / 60)}${i18n.t('achievements.unit_m')}`;
+  const h = s / 3600;
+  // Keep one decimal only when the hours aren't whole (1.5sa reads better than 1sa).
+  return `${Number.isInteger(h) ? h : Math.round(h * 10) / 10}${i18n.t('achievements.unit_h')}`;
+}
+
+function setTimeHUD(sec) {
+  if (timeValueEl) timeValueEl.textContent = fmtClock(sec);
+}
+
 function setFeatherRunHUD(n) {
   if (!featherRunChip) return;
   featherRunValEl.textContent = n;
@@ -1427,7 +1468,14 @@ function ensureGame() {
       vibrate(25);
       registerKill(sp);    // a shredded bird may drop a feather
     },
-    onJump: () => { runJumps += 1; },   // banked into the lifetime jump total at game over
+    // Each jump is counted and stamped with the second of the run it happened
+    // on; both are banked at game over (the count into the lifetime total, the
+    // stamps into the per-run log).
+    onJump: (t) => {
+      runJumps += 1;
+      runJumpTimes.push(Math.round((Number(t) || 0) * 100) / 100);
+    },
+    onTime: (sec) => setTimeHUD(sec),
     onDodgeCharges: (n) => setDodgeHUD(n),
     onDodge: (n) => { setDodgeHUD(n); bumpDodgeChip(); vibrate([0, 30, 30, 30]); },
     onScorePop: (n) => popScore(n),
@@ -1453,7 +1501,10 @@ function startGame() {
   runFeathers = 0;
   runFeatherThreshold = featherDropPercent();   // snapshot the dice threshold for this run
   runJumps = 0;
+  runJumpTimes = [];
+  runStartedAt = Date.now();
   setFeatherRunHUD(0);
+  setTimeHUD(0);
   audio.gameTier(0);   // start the climb soundtrack at tier 1
   ensureGame();
   game.setModifiers(snapshotModifiers());
@@ -1482,6 +1533,12 @@ function handleGameOver(score) {
   addRun();
   addJumps(runJumps);
   runJumps = 0;
+  // Bank the run's clock (lifetime play time + longest-run best) and file the
+  // jump log. Read before anything resets the game, so the duration is this run's.
+  const runSeconds = game ? game.getRunTime() : 0;
+  addPlayTime(runSeconds);
+  recordRunLog({ startedAt: runStartedAt, duration: runSeconds, jumps: runJumpTimes });
+  runJumpTimes = [];
   // Record the run with its earned materials so the recent list can show them.
   // Leaves aren't banked per-run anymore (they're collected from Achievements),
   // so the recent entry reports 0 leaves.

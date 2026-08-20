@@ -37,6 +37,49 @@ function makeGearGrid() {
   return g.map(row => row.join(''));
 }
 
+/* ---------- Procedural stopwatch (focus icon) ----------
+   Same reasoning as the gear: a round case, a rim and two hands read as mush
+   when hand-pixelled, so the case is drawn from radii and the hands from
+   point-to-segment distances. Returns an ASCII grid like the hand-authored
+   icons, so it flows through svgFor() unchanged. */
+function makeStopwatchGrid() {
+  const N = 16, CX = 7.5, CY = 9.6, R = 6.3, RIM = 1.5;
+  const g = Array.from({ length: N }, () => Array(N).fill('.'));
+
+  // distance from (px,py) to the hand segment running from the centre to (bx,by)
+  const handDist = (px, py, bx, by) => {
+    const vx = bx - CX, vy = by - CY;
+    const t = Math.max(0, Math.min(1, ((px - CX) * vx + (py - CY) * vy) / (vx * vx + vy * vy)));
+    return Math.hypot(px - (CX + vx * t), py - (CY + vy * t));
+  };
+
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const px = x + 0.5, py = y + 0.5, ox = Math.abs(px - CX);
+      // crown: a knob sitting on a short stem above the case
+      if (py < 2.0 && ox <= 2.1) g[y][x] = (py < 1.0 || ox > 1.6) ? 'd' : 'm';
+      if (py >= 2.0 && py < 3.8 && ox <= 1.1) g[y][x] = ox > 0.6 ? 'd' : 'm';
+
+      const r = Math.hypot(px - CX, py - CY);
+      if (r > R) continue;
+      if (r > R - 1.0) g[y][x] = 'd';                                // outer contour
+      else if (r > R - RIM) g[y][x] = 'm';                           // metal rim
+      else g[y][x] = (px - CX) + (py - CY) < -3.2 ? 'w' : 'f';       // face + upper-left sheen
+    }
+  }
+  // hands drawn over the face: long sweep hand up, short hand right, dark pivot
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (g[y][x] !== 'f' && g[y][x] !== 'w') continue;
+      const px = x + 0.5, py = y + 0.5;
+      if (handDist(px, py, CX, CY - 3.7) < 0.8) g[y][x] = 'r';
+      else if (handDist(px, py, CX + 2.8, CY) < 0.8) g[y][x] = 'h';
+      if (Math.hypot(px - CX, py - CY) < 1.0) g[y][x] = 'h';
+    }
+  }
+  return g.map(row => row.join(''));
+}
+
 /* ---------- Icon definitions ----------
    Grids are square (16x16). Keep every row exactly as wide as the grid.
    Palette keys are single chars; '.' is transparent. */
@@ -317,24 +360,70 @@ const ICONS = {
     ],
   },
 
-  // 🧘 focus (shortens charge time) — a clock ringed by a circular arrow.
+  // ⏱ focus (shortens charge time) — a stopwatch: crowned case, rim, two hands.
   focus: {
-    palette: { r: '#ffce5a', a: '#ffe08a', h: '#2c2d36' },
+    palette: {
+      d: '#2b3440', // contour / crown outline
+      m: '#9fb0c2', // metal rim + crown
+      f: '#dfe9f2', // dial face
+      w: '#f6fbff', // upper-left sheen
+      h: '#334050', // hour hand + pivot
+      r: '#e2574a', // sweep hand
+    },
+    grid: makeStopwatchGrid(),
+  },
+
+  // ⌛ toplam oynama süresi — an hourglass, sand drained into the lower bulb.
+  hourglass: {
+    palette: {
+      d: '#4a3524', // frame / glass outline
+      g: '#a9713c', // wooden cap
+      s: '#ffd447', // sand
+    },
     grid: [
-      '.......aa.......',
-      '......aaaa......',
-      '.....rr..rr.....',
-      '...rr......rr...',
-      '..r..........r..',
-      '..r....h.....r..',
-      '.r.....h......r.',
-      '.r.....hhhh...r.',
-      '.r...........r..',
-      '..r.........r...',
-      '..r.........r...',
-      '...rr......rr...',
-      '.....rrrrrr.....',
       '................',
+      '..ddddddddddd...',
+      '..dgggggggggd...',
+      '...dsssssssd....',
+      '....dsssssd.....',
+      '.....dsssd......',
+      '......dsd.......',
+      '......dsd.......',
+      '.....d.s.d......',
+      '....d..s..d.....',
+      '...d.sssss.d....',
+      '...dsssssssd....',
+      '..dgggggggggd...',
+      '..ddddddddddd...',
+      '................',
+      '................',
+    ],
+  },
+
+  // 🗡 pençe bileme — a honed talon: curved bone claw with a glint off the edge.
+  clawhone: {
+    palette: {
+      d: '#3a2b20', // outline
+      l: '#fff6e2', // lit outer edge
+      b: '#e7d7b6', // bone body
+      s: '#b99a6d', // inner-edge shadow
+      y: '#ffe08a', // glint
+    },
+    grid: [
+      '...........d....',
+      '..........dd..y.',
+      '.........dbd.yyy',
+      '.......ddbsd..y.',
+      '......dlbsd.....',
+      '....ddlbbsd.....',
+      '...dllbbsd......',
+      '..dllbbsd.......',
+      '.dllbbsd........',
+      '.dllbsd.........',
+      'dllbsd..........',
+      'dlbsd...........',
+      'dlbd............',
+      'dddd............',
       '................',
       '................',
     ],

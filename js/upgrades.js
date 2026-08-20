@@ -80,7 +80,7 @@ export const UPGRADES = [
     // an extra claw into the Bilenmiş Pençe pool. Storage id stays 'sprintSmash'.
     id: 'sprintSmash',
     i18nKey: 'upgrades.sprint_smash',
-    icon: iconHTML('burst'),
+    icon: iconHTML('clawhone'),
     currency: 'leaf',
     maxLevel: 5,
     costs: [4, 4, 4, 4, 4],   // flat leaf price — each level buys another +20% chance

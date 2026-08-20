@@ -71,6 +71,8 @@ Kaçış **veya** Bilenmiş Pençe **max** olduğunda gelişim ekranında açıl
 | Engel parçalama | 150 / 300 / 600 | 🪶 4 / 8 / 14 (toplam **26**) |
 | Koşu sayısı | 5 / 25 / 100 / 500 | ödülsüz |
 | Zıplama sayısı | 50 / 250 / 1000 / 5000 | ödülsüz |
+| Oyun süresi (toplam) | 10dk / 30dk / 1sa / 3sa / 10sa | ödülsüz |
+| Hayatta kalma (tek koşu) | 30sn / 1dk / 2dk / 5dk | ödülsüz |
 
 ## 5. Denge durumu
 
@@ -88,6 +90,8 @@ Gözlemler / dengeleme adayları:
 - [ ] Zorluk rampası artık 200 skorda tavan yapıyor; milestone eşikleri (25…1000) bu eğriye göre yeniden gözden geçirilebilir.
 
 ## 6. Değişiklik günlüğü
+
+- **2026-08-10** — **Süre başarımları eklendi:** iki yeni ödülsüz grup — *Oyun Süresi* (toplam oynama, 10dk→10sa) ve *Hayatta Kalma* (en uzun tek koşu, 30sn→5dk). Koşu saati HUD'da skorun altında gösteriliyor; ilk zıplamayla başlar, duraklatmada durur. Ekonomiye para girişi yok (ödülsüz), sadece başarım içeriği.
 
 - **2026-07-14** — **Kaçış tek hatta birleşti:** kilit (300🪶) + Ekstra Kaçış (100/200/300) yerine 4 kademe: 2/5/8/10 hak, fiyat 25·50·100·150 (tüy sekmesi toplamı 1250 → **675**). · **Sonsuz sekmesi eklendi:** Kaçış/Bilenmiş Pençe max olunca açılır, maxlanan yetenek sadece orada; sınırsız +1 hak — pençe 1000🪵, kaçış 100🪶. Mevcut kayıt notu: eski Kaçış sahipleri kademe 1'e (2 hak) düşer.
 

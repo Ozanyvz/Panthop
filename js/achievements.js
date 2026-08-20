@@ -1,6 +1,7 @@
 import {
   MILESTONES, LEAF_REWARDS,
   getBest, getReachedMilestones, getSmashTotal, getRunsTotal, getJumpsTotal,
+  getPlayTimeTotal, getPlayTimeBest,
   getCollectedAchievements, markAchievementCollected,
   addLeaves, addFeathers, addCoins,
 } from './storage.js';
@@ -48,7 +49,30 @@ const JUMPS_ACH = [
   { id: 'jumps_5000', threshold: 5000 },
 ].map(t => ({ ...t, group: 'jumps', icon: iconHTML('jump'), reward: null }));
 
-export const ACHIEVEMENTS = [...MILESTONE_ACH, ...SMASH_ACH, ...RUNS_ACH, ...JUMPS_ACH];
+/* Time-based tiers. Both groups measure seconds, so their thresholds are
+   seconds too; the screen formats them for display (see fmtDuration in main.js).
+   'time' is lifetime play time, 'runtime' is the longest single run. */
+const TIME_ACH = [
+  { id: 'time_600',   threshold: 600 },     // 10 min
+  { id: 'time_1800',  threshold: 1800 },    // 30 min
+  { id: 'time_3600',  threshold: 3600 },    // 1 h
+  { id: 'time_10800', threshold: 10800 },   // 3 h
+  { id: 'time_36000', threshold: 36000 },   // 10 h
+].map(t => ({ ...t, group: 'time', icon: iconHTML('hourglass'), reward: null }));
+
+const RUNTIME_ACH = [
+  { id: 'runtime_30',  threshold: 30 },
+  { id: 'runtime_60',  threshold: 60 },
+  { id: 'runtime_120', threshold: 120 },
+  { id: 'runtime_300', threshold: 300 },
+].map(t => ({ ...t, group: 'runtime', icon: iconHTML('focus'), reward: null }));
+
+// Groups whose threshold + progress are durations in seconds, not plain counts.
+export const TIME_GROUPS = new Set(['time', 'runtime']);
+
+export const ACHIEVEMENTS = [
+  ...MILESTONE_ACH, ...SMASH_ACH, ...RUNS_ACH, ...JUMPS_ACH, ...TIME_ACH, ...RUNTIME_ACH,
+];
 
 const BY_ID = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]));
 
@@ -58,6 +82,8 @@ export const ACH_GROUPS = [
   { id: 'smash',     i18nKey: 'achievements.group_smash' },
   { id: 'runs',      i18nKey: 'achievements.group_runs' },
   { id: 'jumps',     i18nKey: 'achievements.group_jumps' },
+  { id: 'time',      i18nKey: 'achievements.group_time' },
+  { id: 'runtime',   i18nKey: 'achievements.group_runtime' },
 ];
 
 // Reward currency -> icon HTML (rendered via innerHTML; see js/icons.js).
@@ -75,6 +101,8 @@ export function achievementState(def) {
   } else {
     if (def.group === 'runs') progress = getRunsTotal();
     else if (def.group === 'jumps') progress = getJumpsTotal();
+    else if (def.group === 'time') progress = getPlayTimeTotal();
+    else if (def.group === 'runtime') progress = getPlayTimeBest();
     else progress = getSmashTotal();
     unlocked = progress >= def.threshold;
   }

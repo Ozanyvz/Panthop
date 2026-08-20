@@ -140,6 +140,11 @@
     "group_smash": "SMASH",
     "group_runs": "RUNS",
     "group_jumps": "JUMPS",
+    "group_time": "PLAYTIME",
+    "group_runtime": "SURVIVAL",
+    "unit_s": "s",
+    "unit_m": "m",
+    "unit_h": "h",
     "reward_label": "REWARD",
     "collect": "COLLECT",
     "locked": "LOCKED",
@@ -154,6 +159,10 @@
     "runs_desc": "Play {n} runs in total.",
     "jumps_name": "{n} Jumps",
     "jumps_desc": "Jump {n} times in total.",
+    "time_name": "{n} Played",
+    "time_desc": "Play for {n} in total.",
+    "runtime_name": "{n} Survived",
+    "runtime_desc": "Survive {n} in a single run.",
     "empty": "No achievements yet"
   }
 }

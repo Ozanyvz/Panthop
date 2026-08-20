@@ -13,6 +13,14 @@ const KEY_SMASH_TOTAL = 'wj_smash_total_v1';
 // Lifetime totals for the "runs played" and "jumps" achievements.
 const KEY_RUNS_TOTAL = 'wj_runs_total_v1';
 const KEY_JUMPS_TOTAL = 'wj_jumps_total_v1';
+// Play time in whole seconds: lifetime total, and the longest single run.
+// They drive the two time achievement groups (playtime / survival).
+const KEY_TIME_TOTAL = 'wj_time_total_v1';
+const KEY_TIME_BEST = 'wj_time_best_v1';
+// Rolling per-run log: when the run started and at which second each jump
+// happened. Recorded only — nothing reads it back into gameplay yet.
+const KEY_RUN_LOG = 'wj_run_log_v1';
+const RUN_LOG_LIMIT = 10;
 // Achievement ids whose reward the player has already collected.
 const KEY_ACH_COLLECTED = 'wj_ach_collected_v1';
 const RECENT_LIMIT = 5;
@@ -258,6 +266,59 @@ export function addJumps(n) {
   return next;
 }
 
+/* ---------- Play time ----------
+   Seconds are banked once per run, at game over. The clock the game keeps runs
+   only while a run is actually in progress (it starts on the first jump and is
+   frozen by the pause menu), so idling never inflates these. */
+export function getPlayTimeTotal() {
+  const v = parseInt(localStorage.getItem(KEY_TIME_TOTAL) || '0', 10);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+// Longest single run, in seconds — the "survival" achievement group reads this.
+export function getPlayTimeBest() {
+  const v = parseInt(localStorage.getItem(KEY_TIME_BEST) || '0', 10);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+// Banks one run's duration into both the lifetime total and the longest-run best.
+export function addPlayTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return;
+  const s = Math.round(seconds);
+  if (s <= 0) return;
+  localStorage.setItem(KEY_TIME_TOTAL, String(getPlayTimeTotal() + s));
+  if (s > getPlayTimeBest()) localStorage.setItem(KEY_TIME_BEST, String(s));
+}
+
+/* ---------- Per-run jump log ----------
+   One entry per run: the wall-clock start, the run's duration, and the second
+   each jump landed on (relative to the run's own clock). Kept to the last
+   RUN_LOG_LIMIT runs so the record can't grow without bound. */
+export function getRunLog() {
+  try {
+    const raw = localStorage.getItem(KEY_RUN_LOG);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordRunLog({ startedAt, duration, jumps }) {
+  const entry = {
+    startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(),
+    duration: Math.round((Number(duration) || 0) * 100) / 100,
+    jumps: (Array.isArray(jumps) ? jumps : []).filter(Number.isFinite),
+  };
+  const log = getRunLog();
+  log.unshift(entry);
+  try {
+    localStorage.setItem(KEY_RUN_LOG, JSON.stringify(log.slice(0, RUN_LOG_LIMIT)));
+  } catch {
+    // A full quota must never break the game-over flow — the log is optional.
+  }
+}
+
 /* ---------- Achievements ----------
    Unlock state is DERIVED (milestone reached / smash total ≥ tier), so only the
    "reward already collected" set needs persisting. */
@@ -307,6 +368,7 @@ export function markUpgradesSeen(ids) {
 export function resetProgress() {
   [KEY_BEST, KEY_RECENT, KEY_HIGHSCORES, KEY_MILESTONES, KEY_COINS, KEY_LEAVES,
    KEY_FEATHERS, KEY_SMASH_PROG, KEY_SMASH_TOTAL, KEY_RUNS_TOTAL, KEY_JUMPS_TOTAL,
+   KEY_TIME_TOTAL, KEY_TIME_BEST, KEY_RUN_LOG,
    KEY_ACH_COLLECTED, KEY_UPGRADES, KEY_SEEN_UPG]
     .forEach(k => localStorage.removeItem(k));
   ['sword', 'dodge'].forEach(id => localStorage.removeItem(KEY_INF_PREFIX + id + '_v1'));
