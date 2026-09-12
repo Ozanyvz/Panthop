@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# node_modules'tan uretilir (npm run build) - kaynagi package.json
+vendor/
 sfx-workshop/
 
 # İmzalama anahtarları ve API anahtarları asla commit edilmez

@@ -1,15 +1,16 @@
 /* Panthop service worker — app shell + i18n stale-while-revalidate */
-const VERSION = 'wj-v54';
+const VERSION = 'wj-v56';
 const SHELL_CACHE = `${VERSION}-shell`;
 const I18N_CACHE  = `${VERSION}-i18n`;
-const CDN_CACHE   = `${VERSION}-cdn`;
 
 const SHELL_URLS = [
   './',
   'index.html',
   'css/style.css',
+  'css/icons.css',
   'assets/fonts/pressstart2p.woff2',
   'assets/fonts/vt323.woff2',
+  'vendor/three/three.module.js',
   'js/main.js',
   'js/game.js',
   'js/audio.js',
@@ -18,6 +19,7 @@ const SHELL_URLS = [
   'js/upgrades.js',
   'js/achievements.js',
   'js/i18n.js',
+  'js/icons.js',
   'js/mobile.js',
   'manifest.webmanifest',
   'assets/icons/icon-192.png',
@@ -53,7 +55,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys
-      .filter(k => k !== SHELL_CACHE && k !== I18N_CACHE && k !== CDN_CACHE)
+      .filter(k => k !== SHELL_CACHE && k !== I18N_CACHE)
       .map(k => caches.delete(k)));
     await self.clients.claim();
   })());
@@ -61,7 +63,6 @@ self.addEventListener('activate', (event) => {
 
 function isSameOrigin(url) { return new URL(url).origin === self.location.origin; }
 function isI18nRequest(url) { return new URL(url).pathname.includes('/i18n/') && url.endsWith('.json'); }
-function isCdnRequest(url) { return new URL(url).origin === 'https://unpkg.com'; }
 
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
@@ -121,11 +122,6 @@ self.addEventListener('fetch', (event) => {
 
   if (isI18nRequest(url)) {
     event.respondWith(staleWhileRevalidate(request, I18N_CACHE));
-    return;
-  }
-
-  if (isCdnRequest(url)) {
-    event.respondWith(networkFirst(request, CDN_CACHE));
     return;
   }
 

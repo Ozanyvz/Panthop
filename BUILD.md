@@ -4,8 +4,14 @@
 
 ```powershell
 npm install
+npm run build      # ZORUNLU (ilk seferde): vendor/ klasorunu uretir
 npm start          # http://localhost:5173
 ```
+
+> `npm run build` olmadan oyun acilmaz: Three.js ve @capacitor/core artik CDN'den
+> degil, `node_modules`'tan `vendor/` altina kopyalanarak servis ediliyor
+> (cevrimdisi calissin + App Store 2.5.2 riski olmasin diye). `vendor/` uretilen
+> bir klasor, git'te tutulmuyor.
 
 PWA testi için:
 1. Tarayıcıyı aç → DevTools → Application → Service Workers (kayıtlı olmalı)
