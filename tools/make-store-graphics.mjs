@@ -4,16 +4,19 @@
 //
 //   node tools/make-store-graphics.mjs        (or: npm run store:gfx)
 //
-// Outputs (store/):
-//   play/feature-1024x500.png        ← Play feature graphic (required, no raw needed)
-//   play/NN-phone-1080x1920.png      ← Play phone screenshots
-//   ios/NN-iphone69-1290x2796.png    ← App Store 6.9" (iPhone 15/16 Pro Max)
-//   ios/NN-iphone65-1242x2688.png    ← App Store 6.5" (older big iPhones)
-//   ios/NN-ipad13-2048x2732.png      ← App Store 13" iPad (needed if iPad enabled)
+// Per language (Play and the App Store both take a separate screenshot set for
+// each listing language), outputs land under store/<store>/<lang>/:
+//   play/feature-1024x500.png        ← Play feature graphic (language-neutral)
+//   play/<lang>/NN-phone-1080x1920.png
+//   ios/<lang>/NN-iphone69-1290x2796.png    ← App Store 6.9" (iPhone 15/16 Pro Max)
+//   ios/<lang>/NN-iphone65-1242x2688.png    ← App Store 6.5" (older big iPhones)
+//   ios/<lang>/NN-ipad13-2048x2732.png      ← App Store 13" iPad (needed if iPad enabled)
 //
-// Raw gameplay shots: drop PNG/JPG files into store/raw/ — they are picked up
-// in filename order and paired with CAPTIONS below. With store/raw/ empty a
-// placeholder template is rendered so the layout can be previewed.
+// Raw gameplay shots: drop PNG/JPG into store/raw/<lang>/ — the UI language in
+// the shot has to match the caption language, so tr/ shots must be taken with
+// the game set to Turkish. Files are picked up in filename order and paired
+// with CAPTIONS[lang]. A language with no raw folder is skipped; with none at
+// all a placeholder template is rendered so the layout can be previewed.
 //
 // Text is drawn with a built-in 5×7 pixel font (the game's woff2 fonts can't
 // be used inside librsvg), so captions must be ASCII — same rule as tr.json.
@@ -30,15 +33,35 @@ const MASCOT = resolve(ASSETS, 'logo-panther.png');
 const WORDMARK = resolve(ASSETS, 'logo-name-panthop.svg');
 const VINE = resolve(ASSETS, 'vine-corner.svg');
 
-/* Captions paired with raw screenshots in filename order (ASCII only). */
-const CAPTIONS = [
-  ['TEK TUSLA', 'ZIPLA!'],
-  ['ENGELLERI AS', 'YUKARI TIRMAN'],
-  ['KABUK TOPLA', 'GELISIM AL'],
-  ['BASARIMLARI AC', 'ODULLERI TOPLA'],
-  ['PENCE VE KALKAN', 'GUCLERI SENINLE'],
-  ['REKORU KIR', 'ZIRVEYE TIRMAN'],
-];
+/* Captions paired with raw screenshots in filename order (ASCII only — the
+   built-in pixel font has no accented glyphs, same rule as tr.json). */
+const CAPTIONS = {
+  tr: [
+    ['TEK TUSLA', 'ZIPLA!'],
+    ['ENGELLERI AS', 'YUKARI TIRMAN'],
+    ['KABUK TOPLA', 'GELISIM AL'],
+    ['BASARIMLARI AC', 'ODULLERI TOPLA'],
+    ['PENCE VE KALKAN', 'GUCLERI SENINLE'],
+    ['REKORU KIR', 'ZIRVEYE TIRMAN'],
+  ],
+  en: [
+    ['ONE TAP', 'TO JUMP!'],
+    ['CLEAR OBSTACLES', 'CLIMB HIGHER'],
+    ['COLLECT BARK', 'BUY UPGRADES'],
+    ['UNLOCK ACHIEVEMENTS', 'CLAIM REWARDS'],
+    ['CLAW AND SHIELD', 'POWERS WITH YOU'],
+    ['BEAT YOUR RECORD', 'REACH THE TOP'],
+  ],
+};
+const LANGS = Object.keys(CAPTIONS);
+
+/* Phone screenshots arrive with the OS status bar on top and the gesture/
+   navigation bar underneath; both look like clutter in a store listing. The
+   game draws edge to edge, so there is no colour boundary to detect reliably —
+   these are fractions of the raw height, trimmed before composition.
+   Measured against 945x2048 Android shots; adjust if a device differs. */
+const TRIM_TOP = 0.049;
+const TRIM_BOTTOM = 0.065;
 
 /* Store screenshot sizes. */
 const SHOT_SIZES = [
@@ -227,7 +250,7 @@ async function mascotUri(width) {
 }
 
 /* ---------- Screenshot composition ---------- */
-async function makeShot({ w: W, h: H, tag, dir }, idx, rawPath, caption) {
+async function makeShot({ w: W, h: H, tag, dir }, idx, rawPath, caption, lang) {
   const cx = W / 2;
   const px = Math.max(3, Math.round(W / 270));
 
@@ -249,10 +272,19 @@ async function makeShot({ w: W, h: H, tag, dir }, idx, rawPath, caption) {
   const maxInnerW = Math.round(W * 0.8) - 2 * b;
   const maxInnerH = frameBottom - frameTop - 2 * b;
 
+  // Trim the OS bars first, so both the frame's aspect and the pixels drawn
+  // into it describe the game alone.
+  let shot = null;
   let rawAspect = 1080 / 2340;           // placeholder default: modern phone
   if (rawPath) {
     const m = await sharp(rawPath).metadata();
-    rawAspect = m.width / m.height;
+    const top = Math.round(m.height * TRIM_TOP);
+    const bottom = Math.round(m.height * TRIM_BOTTOM);
+    shot = await sharp(rawPath)
+      .extract({ left: 0, top, width: m.width, height: m.height - top - bottom })
+      .toBuffer();
+    const t = await sharp(shot).metadata();
+    rawAspect = t.width / t.height;
   }
   let innerH = maxInnerH;
   let innerW = Math.round(innerH * rawAspect);
@@ -267,7 +299,7 @@ async function makeShot({ w: W, h: H, tag, dir }, idx, rawPath, caption) {
 
   let slot;
   if (rawPath) {
-    const buf = await sharp(rawPath)
+    const buf = await sharp(shot)
       .resize(innerW, innerH, { fit: 'contain', background: C.slot })
       .png()
       .toBuffer();
@@ -293,11 +325,12 @@ async function makeShot({ w: W, h: H, tag, dir }, idx, rawPath, caption) {
     ${nestedSvg(WORDMARK, Math.round(cx - wmW / 2), wmY, wmW, wmH)}
   </svg>`;
 
-  const outDir = resolve(ROOT, dir);
+  const rel = `${dir}/${lang}`;
+  const outDir = resolve(ROOT, rel);
   mkdirSync(outDir, { recursive: true });
   const name = `${String(idx + 1).padStart(2, '0')}-${tag}-${W}x${H}.png`;
   await sharp(Buffer.from(svg)).png().toFile(resolve(outDir, name));
-  return `${dir}/${name}`;
+  return `${rel}/${name}`;
 }
 
 /* ---------- Play feature graphic (1024×500) ---------- */
@@ -328,28 +361,52 @@ async function makeFeature() {
 }
 
 /* ---------- Main ---------- */
+/* Raw shots are paired with captions by the NUMBER that starts the filename
+   ("03-gelisim.png" -> caption 3), not by position in the folder. A missing
+   shot therefore leaves a gap instead of silently shifting every caption after
+   it onto the wrong picture. Files with no leading number fall back to their
+   position, so an unnumbered folder still works. */
+function rawsFor(lang) {
+  const dir = resolve(RAW_DIR, lang);
+  if (!existsSync(dir)) return [];
+  const files = readdirSync(dir)
+    .filter((f) => ['.png', '.jpg', '.jpeg', '.webp'].includes(extname(f).toLowerCase()))
+    .sort();
+  return files.map((f, pos) => {
+    const m = /^(\d+)/.exec(f);
+    return { path: resolve(dir, f), capIdx: m ? parseInt(m[1], 10) - 1 : pos, file: f };
+  });
+}
+
 async function main() {
   mkdirSync(RAW_DIR, { recursive: true });
 
-  const raws = existsSync(RAW_DIR)
-    ? readdirSync(RAW_DIR)
-        .filter((f) => ['.png', '.jpg', '.jpeg', '.webp'].includes(extname(f).toLowerCase()))
-        .sort()
-        .map((f) => resolve(RAW_DIR, f))
-    : [];
-
   const made = [];
-  made.push(await makeFeature());
+  made.push(await makeFeature());     // language-neutral, one copy
 
-  if (raws.length === 0) {
-    console.log('store/raw/ bos — sablon (placeholder) gorseller uretiliyor.');
-    console.log('Gercek oyun goruntulerini store/raw/ icine at, sonra tekrar calistir.');
-    for (const size of SHOT_SIZES) made.push(await makeShot(size, 0, null, CAPTIONS[0]));
+  const present = LANGS.filter((l) => rawsFor(l).length > 0);
+
+  if (present.length === 0) {
+    console.log('store/raw/<dil>/ bos — sablon (placeholder) gorseller uretiliyor.');
+    console.log(`Gercek goruntuleri store/raw/tr/ veya store/raw/en/ icine at.`);
+    for (const size of SHOT_SIZES) made.push(await makeShot(size, 0, null, CAPTIONS.tr[0], 'tr'));
   } else {
-    for (let i = 0; i < raws.length; i++) {
-      const caption = CAPTIONS[i] || ['PANTHOP'];
-      for (const size of SHOT_SIZES) made.push(await makeShot(size, i, raws[i], caption));
+    for (const lang of present) {
+      const raws = rawsFor(lang);
+      console.log(`[${lang}] ${raws.length} ham goruntu`);
+      for (let i = 0; i < raws.length; i++) {
+        const { path, capIdx, file } = raws[i];
+        const caption = CAPTIONS[lang][capIdx];
+        if (!caption) {
+          console.warn(`  ! ${file}: ${capIdx + 1}. basligin karsiligi yok, atlandi`);
+          continue;
+        }
+        console.log(`  ${file} -> "${caption.join(' / ')}"`);
+        for (const size of SHOT_SIZES) made.push(await makeShot(size, capIdx, path, caption, lang));
+      }
     }
+    const missing = LANGS.filter((l) => !present.includes(l));
+    if (missing.length) console.log(`atlandi (ham goruntu yok): ${missing.join(', ')}`);
   }
 
   for (const f of made) console.log('  ✓', f);

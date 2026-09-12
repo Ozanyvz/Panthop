@@ -24,3 +24,9 @@ server.log
 
 # Release imzalama bilgileri - asla commit edilmez
 android/keystore.properties
+
+# Magaza gorselleri: uretilen ciktilar (npm run store:gfx).
+# Kaynak store/raw/ altinda ve o commit ediliyor - bunlar saniyeler icinde
+# yeniden uretiliyor, ~59 MB ikili dosyayi gecmiste tutmanin anlami yok.
+store/play/
+store/ios/
