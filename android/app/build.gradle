@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+/* Release signing.
+   Credentials live in android/keystore.properties, which is gitignored and
+   points at a .jks kept OUTSIDE the repo — nothing secret is ever committed.
+   When that file is absent (fresh clone, CI, anyone but the release machine)
+   the block below is simply skipped and `assembleRelease` still builds, just
+   unsigned, exactly as it did before. See RELEASE.md 5a. */
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
 android {
     namespace "com.simpleonetap.panthop"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,10 +28,24 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            release {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

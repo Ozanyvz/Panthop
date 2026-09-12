@@ -21,3 +21,6 @@ server.log
 
 # Claude Code yerel makine ayarlari
 .claude/
+
+# Release imzalama bilgileri - asla commit edilmez
+android/keystore.properties
