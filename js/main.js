@@ -1,5 +1,5 @@
 import { PanthopGame } from './game.js';
-import { getBest, getRecent, getHighScores, pushScore, pushRecent, addCoins, getCoins, getLeaves, getFeathers, addFeathers, registerSmashes, getSmashTotal, addRun, addJumps, addPlayTime, recordRunLog, getUpgradeLevel, getSeenUpgrades, markUpgradesSeen, resetProgress, getInfinityCount } from './storage.js';
+import { getBest, getRecent, getHighScores, pushScore, pushRecent, addCoins, getCoins, getLeaves, getFeathers, addFeathers, registerSmashes, getSmashTotal, addRun, addJumps, addPlayTime, recordRunLog, getUpgradeLevel, getSeenUpgrades, markUpgradesSeen, resetProgress, getInfinityCount, hasAcceptedPrivacy, acceptPrivacy } from './storage.js';
 import {
   UPGRADES,
   nextCost,
@@ -35,7 +35,7 @@ import * as i18n from './i18n.js';
 import { iconHTML, currencyIcon } from './icons.js';
 import { vibrate, requestWakeLock, releaseWakeLock, markPlaying, lockPortrait } from './mobile.js';
 import * as audio from './audio.js';
-import { initAds, prepareRewarded, rewardedReady, showRewarded } from './services/ads.js';
+import { initAds, prepareRewarded, rewardedReady, showRewarded, adPrivacyOptionsRequired, showAdPrivacyOptions } from './services/ads.js';
 import { initGameServices, syncAchievements } from './services/achievements.js';
 
 const COUNTUP_MS = 850;
@@ -82,7 +82,13 @@ const recentList = document.getElementById('recent-list');
 const scoreTabsEl = document.getElementById('score-tabs');
 const settingsBtn = document.getElementById('settings-btn');
 
+const consentScreen = document.getElementById('consent-screen');
+const consentAcceptBtn = document.getElementById('consent-accept');
+const consentLink = document.getElementById('consent-link');
+
 const settingsScreen = document.getElementById('settings-screen');
+const settingsPrivacyLink = document.getElementById('settings-privacy-link');
+const adPrivacyBtn = document.getElementById('ad-privacy-btn');
 const settingsBackBtn = document.getElementById('settings-back-btn');
 const langOptionsEl = document.getElementById('lang-options');
 const audioLevelsEl = document.getElementById('audio-levels');
@@ -443,6 +449,64 @@ function closeConfirm() {
   hide(confirmOverlay);
   confirmInput.value = '';
   confirmYesBtn.disabled = true;
+}
+
+/* ---------- Privacy gate ----------
+   Play and the App Store both require the policy to be presented before
+   anything collects data, so on a first launch (or after PRIVACY_VERSION is
+   bumped) this screen is the whole app: the ad SDK and the platform game
+   services are not started until the player accepts.
+
+   The full text lives on the web — the URL is per-language, so it comes out of
+   the dictionary, with a hard fallback: if the dictionary failed to load, t()
+   hands back the key itself, and a relative "privacy.url" href would turn the
+   store-required link into a dead one.
+
+   The anchors carry target="_blank", which reaches the system browser on both
+   natives: Android ignores _blank, loads in place and Capacitor's
+   shouldOverrideUrlLoading fires an ACTION_VIEW intent for the foreign host;
+   iOS routes it through createWebViewWith → UIApplication.open. */
+const PRIVACY_URL_FALLBACK = 'https://aldros.site/panthop/gizlilik';
+
+function applyPrivacyLinks() {
+  const url = i18n.t('privacy.url');
+  const href = url && url !== 'privacy.url' ? url : PRIVACY_URL_FALLBACK;
+  [consentLink, settingsPrivacyLink].forEach(a => { if (a) a.href = href; });
+}
+
+/* Google's consent form only applies to some regions, and the plugin can only
+   answer once initAds() has talked to the UMP SDK — so this runs after that
+   resolves rather than at DOM setup, and stays hidden everywhere else. */
+async function refreshAdPrivacyBtn() {
+  if (!adPrivacyBtn) return;
+  const required = await adPrivacyOptionsRequired();
+  adPrivacyBtn.classList.toggle('hidden', !required);
+}
+
+function showConsentScreen() {
+  hide(hud);
+  hide(startScreen);
+  show(consentScreen);
+}
+
+// Accepting is the real start of the session: only now may the data-touching
+// services come up, and only now does the menu take over the screen.
+function acceptConsent() {
+  acceptPrivacy();
+  hide(consentScreen);
+  enterApp();
+}
+
+// Everything the app does once consent is in hand — also the straight path on
+// every later launch, where the gate never shows.
+function enterApp() {
+  showStartScreen();
+  requestAnimationFrame(() => ensureGame());
+  // Native game services (all no-ops on web). Init AdMob + preload a rewarded
+  // ad, then sign in to the platform game service and mirror any already-earned
+  // achievements outward. Fire-and-forget — failures must not block the UI.
+  initAds().then(() => { refreshRewardAd(); refreshAdPrivacyBtn(); });
+  initGameServices().then(() => syncAchievements(unlockedAchievementIds()));
 }
 
 function showStartScreen() {
@@ -1607,6 +1671,7 @@ function handleGameOver(score) {
 function bindGameTap() {
   let pressing = false;
   const inActiveGame = () =>
+    consentScreen.classList.contains('hidden') &&
     startScreen.classList.contains('hidden') &&
     gameOverScreen.classList.contains('hidden') &&
     upgradesScreen.classList.contains('hidden') &&
@@ -1879,15 +1944,16 @@ function registerServiceWorker() {
   });
 }
 
+consentAcceptBtn?.addEventListener('click', acceptConsent);
+adPrivacyBtn?.addEventListener('click', showAdPrivacyOptions);
+
 (async () => {
   audio.initAudio();
   try { await i18n.init(); } catch (err) { console.error('i18n init failed', err); }
-  showStartScreen();
-  requestAnimationFrame(() => ensureGame());
+  // The policy URL differs per language, so re-point the links on every switch.
+  applyPrivacyLinks();
+  i18n.onChange(applyPrivacyLinks);
   registerServiceWorker();
-  // Native game services (all no-ops on web). Init AdMob + preload a rewarded
-  // ad, then sign in to the platform game service and mirror any already-earned
-  // achievements outward. Fire-and-forget — failures must not block the UI.
-  initAds().then(refreshRewardAd);
-  initGameServices().then(() => syncAchievements(unlockedAchievementIds()));
+  if (hasAcceptedPrivacy()) enterApp();
+  else showConsentScreen();
 })();

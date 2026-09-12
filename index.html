@@ -57,6 +57,53 @@
       </div>
     </div>
 
+    <!-- First-launch privacy gate. Sits above every other screen and is the only
+         thing visible until the player accepts; nothing that touches data (the
+         ad SDK, the game services) starts before that. See js/main.js boot. -->
+    <div id="consent-screen" class="screen hidden">
+      <div class="vine-frame" aria-hidden="true">
+        <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-tr" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-bl" src="assets/vine-corner.svg" alt="" />
+        <img class="vine v-br" src="assets/vine-corner.svg" alt="" />
+      </div>
+
+      <div class="consent-head">
+        <img src="assets/logo-panther.png" alt="" aria-hidden="true" class="consent-mascot" />
+        <div class="consent-title" data-i18n="privacy.title">GIZLILIK</div>
+      </div>
+
+      <div class="consent-body">
+        <p class="consent-lead" data-i18n="privacy.lead">Panthop oynamak icin hesap acmaniz gerekmez.</p>
+        <ul class="consent-points">
+          <li>
+            <span class="consent-icon gi gi-check" aria-hidden="true"></span>
+            <span data-i18n="privacy.point_local">Skorlariniz, paralariniz ve ayarlariniz yalnizca cihazinizda saklanir.</span>
+          </li>
+          <li>
+            <span class="consent-icon gi gi-tv" aria-hidden="true"></span>
+            <span data-i18n="privacy.point_ads">Izlemeyi kendiniz sectiginiz odullu reklamlar Google AdMob ile sunulur; AdMob reklam kimliginizi ve cihaz bilgilerinizi isler.</span>
+          </li>
+          <li>
+            <span class="consent-icon gi gi-trophy" aria-hidden="true"></span>
+            <span data-i18n="privacy.point_services">Cihazinizda oturum acikken basarimlariniz Play Games / Game Center ile eslenebilir.</span>
+          </li>
+          <li>
+            <span class="consent-icon gi gi-gear" aria-hidden="true"></span>
+            <span data-i18n="privacy.point_reset">Tum verilerinizi Ayarlar'dan istediginiz zaman silebilirsiniz.</span>
+          </li>
+        </ul>
+        <a id="consent-link" class="consent-link" href="#" target="_blank" rel="noopener noreferrer" data-i18n="privacy.read_full">GIZLILIK POLITIKASININ TAMAMINI OKU</a>
+      </div>
+
+      <div class="consent-actions">
+        <button id="consent-accept" class="tap-btn" type="button">
+          <span class="tap-btn-inner" data-i18n="privacy.accept">KABUL ET VE BASLA</span>
+        </button>
+        <p class="consent-note" data-i18n="privacy.accept_note">Devam ederek gizlilik politikasini kabul etmis olursunuz.</p>
+      </div>
+    </div>
+
     <div id="start-screen" class="screen">
       <div class="vine-frame" aria-hidden="true">
         <img class="vine v-tl" src="assets/vine-corner.svg" alt="" />
@@ -191,6 +238,16 @@
           <div class="settings-section-label" data-i18n="settings.data">VERILER</div>
           <button id="reset-progress-btn" class="danger-btn" type="button" data-i18n="settings.reset">ILERLEMEYI SIFIRLA</button>
           <p class="settings-hint" data-i18n="settings.reset_hint">Skorlar, agac kabugu, yaprak ve gelismeler silinir.</p>
+        </section>
+
+        <!-- The stores require the policy to stay reachable from inside the app,
+             not only at the first-launch gate. -->
+        <section class="settings-section">
+          <div class="settings-section-label" data-i18n="settings.privacy">GIZLILIK</div>
+          <a id="settings-privacy-link" class="settings-link" href="#" target="_blank" rel="noopener noreferrer" data-i18n="privacy.read_full">GIZLILIK POLITIKASININ TAMAMINI OKU</a>
+          <!-- Only revealed where Google's UMP form applies (EEA / UK / CH);
+               it must stay reachable so the player can change their mind. -->
+          <button id="ad-privacy-btn" class="settings-link hidden" type="button" data-i18n="settings.ad_privacy">REKLAM TERCIHLERI</button>
         </section>
       </div>
 

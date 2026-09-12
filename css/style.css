@@ -1523,6 +1523,136 @@ html, body {
   filter: drop-shadow(0 1px 0 #7a1c14);
 }
 
+/* Rows in the Settings privacy section — the policy link and the ad-consent
+   button share this look. Deliberately a row, not a call-to-action: both hand
+   the player off (to the browser / to Google's form), so neither should read
+   like the destructive action above them.
+   `appearance`/`font-family`/`width` are here for the <button> variant, which
+   would otherwise take the UA's chrome, font and shrink-to-fit width. */
+.settings-link {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  width: 100%;
+  display: block;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--card-br);
+  color: var(--accent-3);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.settings-link:active {
+  border-color: rgba(110, 200, 235, 0.5);
+  background: rgba(110, 200, 235, 0.12);
+}
+
+/* ---------- First-launch privacy gate ----------
+   Sits above every screen (z-index over .screen's 10) so nothing behind it can
+   be tapped before the policy is accepted. The points list is the only long
+   body copy in the app, so it gets its own scroll pane. */
+#consent-screen {
+  z-index: 60;
+  justify-content: center;
+  gap: 18px;
+}
+
+.consent-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.consent-mascot {
+  width: min(22vw, 92px);
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35));
+}
+.consent-title {
+  font-size: clamp(24px, 7vw, 32px);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--text);
+  text-shadow: 0 4px 18px rgba(110, 200, 235, 0.25);
+}
+
+.consent-body {
+  width: 100%;
+  max-width: 360px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.consent-lead {
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--text);
+}
+
+.consent-points {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.consent-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--card-br);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+.consent-icon { flex: none; margin-top: 1px; }
+
+.consent-link {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(110, 200, 235, 0.35);
+  background: rgba(110, 200, 235, 0.08);
+  color: var(--accent-3);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-decoration: none;
+}
+.consent-link:active { background: rgba(110, 200, 235, 0.18); }
+
+.consent-actions {
+  width: 100%;
+  max-width: 360px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.consent-note {
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-dim);
+}
+
 /* ---------- Confirm dialog overlay ---------- */
 /* ---------- Pause overlay ---------- */
 .pause-overlay {
@@ -2585,7 +2715,8 @@ html, body {
 .go-title,
 .settings-title,
 .upg-title,
-.ach-title {
+.ach-title,
+.consent-title {
   font-family: var(--font-display);
   letter-spacing: 0.02em;
   line-height: 1.25;
@@ -2593,7 +2724,8 @@ html, body {
 .go-title { font-size: clamp(17px, 5.4vw, 26px); }
 .settings-title,
 .upg-title,
-.ach-title { font-size: clamp(15px, 4.6vw, 20px); }
+.ach-title,
+.consent-title { font-size: clamp(15px, 4.6vw, 20px); }
 
 /* Primary call-to-action (OYNA / DEVAM) */
 .tap-btn-inner {
@@ -2664,6 +2796,12 @@ html, body {
 .lang-option { font-size: 19px; }
 .lang-option .code { font-size: 15px; }
 .settings-hint { font-size: 15px; }
+.settings-link { font-size: 17px; }
+
+.consent-lead { font-size: 19px; }
+.consent-points li { font-size: 17px; }
+.consent-link { font-size: 16px; }
+.consent-note { font-size: 15px; }
 
 .ms-badge { font-size: 16px; }
 .ach-tile-num { font-size: 14px; }

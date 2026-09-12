@@ -26,6 +26,10 @@ const RUN_LOG_LIMIT = 10;
 const KEY_SECRETS = 'wj_secrets_v1';
 // Achievement ids whose reward the player has already collected.
 const KEY_ACH_COLLECTED = 'wj_ach_collected_v1';
+// Privacy consent: which version of the policy the player accepted. Stored as a
+// number so a reworded policy (PRIVACY.md → bump PRIVACY_VERSION) asks again on
+// the next launch instead of silently riding on the old acceptance.
+const KEY_PRIVACY = 'wj_privacy_ok_v1';
 const RECENT_LIMIT = 5;
 const HIGH_LIMIT = 5;
 
@@ -322,6 +326,21 @@ export function recordRunLog({ startedAt, duration, jumps }) {
   }
 }
 
+/* ---------- Privacy consent ----------
+   The stores require the policy to be shown and accepted before anything that
+   collects data runs, so main.js gates its boot (and initAds) on this. Raise
+   PRIVACY_VERSION whenever PRIVACY.md changes materially. */
+export const PRIVACY_VERSION = 1;
+
+export function hasAcceptedPrivacy() {
+  const v = parseInt(localStorage.getItem(KEY_PRIVACY) || '0', 10);
+  return Number.isFinite(v) && v >= PRIVACY_VERSION;
+}
+
+export function acceptPrivacy() {
+  try { localStorage.setItem(KEY_PRIVACY, String(PRIVACY_VERSION)); } catch { /* private mode */ }
+}
+
 /* ---------- Secret achievements ----------
    A plain id set. Nothing derives these: the run that earns one calls
    unlockSecret() and that flag is what the Achievements screen reads back. */
@@ -391,6 +410,8 @@ export function markUpgradesSeen(ids) {
 /* ---------- Reset ---------- */
 // Wipes all gameplay progress (scores, milestones, currencies, upgrades).
 // Language preference (wj_lang_v1) is intentionally kept — it's a setting, not progress.
+// The privacy acceptance (KEY_PRIVACY) is kept too: it's a consent record, not
+// progress, and re-prompting for it after a gameplay reset would be noise.
 export function resetProgress() {
   [KEY_BEST, KEY_RECENT, KEY_HIGHSCORES, KEY_MILESTONES, KEY_COINS, KEY_LEAVES,
    KEY_FEATHERS, KEY_SMASH_PROG, KEY_SMASH_TOTAL, KEY_RUNS_TOTAL, KEY_JUMPS_TOTAL,

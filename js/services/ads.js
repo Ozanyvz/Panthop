@@ -30,6 +30,9 @@ function mockProvider() {
     async init() {},
     async rewardedReady() { return true; },
     async prepareRewarded() {},
+    // No UMP on the web — nothing to consent to and nothing to reopen.
+    privacyOptionsRequired() { return false; },
+    async showPrivacyOptions() {},
     async showRewarded() {
       // Returns true only if the "ad" is completed — Cancel tests the declined path.
       return globalThis.confirm?.('[DEV reklam] Odulu vermek icin Tamam, vazgecmek icin Iptal.') ?? true;
@@ -74,4 +77,20 @@ export async function showRewarded() {
   const provider = await getProvider();
   if (!provider) return false;
   try { return await provider.showRewarded(); } catch { return false; }
+}
+
+/* ---- Ad-consent options ----
+   Google requires players its consent form applies to (EEA / UK / Switzerland)
+   to be able to reopen it and change their mind. Settings asks after initAds()
+   has resolved; everywhere else this stays false and the button never shows. */
+export async function adPrivacyOptionsRequired() {
+  const provider = await getProvider();
+  try { return provider?.privacyOptionsRequired?.() ?? false; } catch { return false; }
+}
+
+export async function showAdPrivacyOptions() {
+  const provider = await getProvider();
+  if (provider?.showPrivacyOptions) {
+    try { await provider.showPrivacyOptions(); } catch { /* non-fatal */ }
+  }
 }

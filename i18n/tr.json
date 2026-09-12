@@ -61,6 +61,8 @@
     "reset": "ILERLEMEYI SIFIRLA",
     "reset_hint": "Skorlar, agac kabugu, yaprak ve tum gelismeler kalici olarak silinir.",
     "reset_confirm": "Var olan butun ilerlemeniz sifirlanacak. Emin misiniz?",
+    "ad_privacy": "REKLAM TERCIHLERI",
+    "privacy": "GIZLILIK",
     "reset_type": "Onaylamak icin asagiya '{word}' yazin",
     "yes": "EVET",
     "no": "HAYIR",
@@ -169,5 +171,17 @@
     "musician_name": "Muzisyen",
     "musician_desc": "Ard arda 6 ziplamayi ayni ritimde tuttur.",
     "empty": "Henuz basarim yok"
+  },
+  "privacy": {
+    "url": "https://aldros.site/panthop/gizlilik",
+    "title": "GIZLILIK",
+    "lead": "Panthop oynamak icin hesap acmaniz ya da bize kisisel bilgi vermeniz gerekmez.",
+    "point_local": "Skorlariniz, paralariniz, basarimlariniz ve ayarlariniz yalnizca cihazinizda saklanir.",
+    "point_ads": "Izlemeyi kendiniz sectiginiz odullu reklamlar Google AdMob ile sunulur; AdMob reklam kimliginizi ve cihaz bilgilerinizi isler.",
+    "point_services": "Cihazinizda oturum acikken basarimlariniz Play Games / Game Center ile eslenebilir.",
+    "point_reset": "Tum verilerinizi Ayarlar > Veriler bolumunden istediginiz zaman silebilirsiniz.",
+    "read_full": "GIZLILIK POLITIKASININ TAMAMINI OKU",
+    "accept": "KABUL ET VE BASLA",
+    "accept_note": "Devam ederek gizlilik politikasini kabul etmis olursunuz."
   }
 }

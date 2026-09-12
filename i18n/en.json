@@ -61,6 +61,8 @@
     "reset": "RESET PROGRESS",
     "reset_hint": "Scores, tree bark, leaves and all upgrades are permanently erased.",
     "reset_confirm": "All of your current progress will be reset. Are you sure?",
+    "ad_privacy": "AD PREFERENCES",
+    "privacy": "PRIVACY",
     "reset_type": "Type '{word}' below to confirm",
     "yes": "YES",
     "no": "NO",
@@ -169,5 +171,17 @@
     "musician_name": "Musician",
     "musician_desc": "Land 6 jumps in a row on the same beat.",
     "empty": "No achievements yet"
+  },
+  "privacy": {
+    "url": "https://aldros.site/panthop/privacy",
+    "title": "PRIVACY",
+    "lead": "You do not need an account, or to give us any personal information, to play Panthop.",
+    "point_local": "Your scores, currencies, achievements and settings are stored on your device only.",
+    "point_ads": "Rewarded ads you choose to watch are served by Google AdMob, which processes your advertising ID and device information.",
+    "point_services": "While you are signed in on your device, achievements may be mirrored to Play Games / Game Center.",
+    "point_reset": "You can erase all of your data at any time from Settings > Data.",
+    "read_full": "READ THE FULL PRIVACY POLICY",
+    "accept": "ACCEPT AND PLAY",
+    "accept_note": "By continuing you accept the privacy policy."
   }
 }
