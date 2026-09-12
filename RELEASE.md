@@ -38,19 +38,120 @@ Yayından önce bunları commit et ki gönderilen sürüm net olsun.
 
 ---
 
-## 2. Gizlilik Politikası (ZORUNLU — şu an YOK, sert engel)
+## 2. Gizlilik Politikası (kod + site HAZIR — sadece deploy kaldı)
 
 Oyun AdMob (reklam kimliği) kullanıyor. Hem Play hem App Store **barındırılan bir
-gizlilik politikası URL'si** ister. Bu olmadan gönderim reddedilir.
+gizlilik politikası URL'si** ister.
 
-- [ ] Bir gizlilik politikası metni oluştur. En kolay yol:
-  - Ücretsiz üretici: https://app-privacy-policy-generator.firebaseapp.com veya https://www.termsfeed.com
-  - Şunları belirt: **AdMob (Google) reklam SDK'sı** kullanılıyor; reklam kimliği/cihaz
-    verisi reklam amaçlı toplanıyor; başka kişisel veri toplanmıyor; iletişim e-postan.
-- [ ] Metni bir yerde **herkese açık URL** olarak barındır:
-  - GitHub Pages (ücretsiz), Google Sites, Notion herkese-açık sayfa, ya da kendi siten
-- [ ] URL'yi bir kenara not et — hem Play hem App Store formuna gireceksin
-- [ ] (Öneri) Aynı URL'yi oyun içinde/mağaza sayfasında da göster
+Yapıldı:
+- Kaynak metin → [PRIVACY.md](PRIVACY.md) (TR + EN)
+- **Site sayfaları** → `Aldros-art` deposunda `panthop/gizlilik.html` +
+  `panthop/privacy.html`; uzantısız adresler için `netlify.toml`'a 200 rewrite
+  kuralları eklendi (mevcut `/*` yakalayıcısının ÖNÜNE — yoksa ana sayfayı döndürürdü)
+- **Oyun içi tek seferlik onay ekranı**; onaylanmadan AdMob ve Play Games/Game
+  Center başlatılmıyor ([js/main.js](js/main.js) → `showConsentScreen`)
+- Onay ekranındaki **"TAMAMINI OKU"** bağlantısı ve **Ayarlar → GİZLİLİK** satırı
+  siteye gidiyor (her iki platformda da sistem tarayıcısında açılır)
+- URL'ler `i18n/tr.json` + `i18n/en.json` → `privacy.url`:
+  - TR: `https://aldros.site/panthop/gizlilik`
+  - EN: `https://aldros.site/panthop/privacy`
+- İletişim adresi: `ozanyvz92@yandex.com` (sitenin iletişim sayfasındaki adres)
+
+Senin yapacakların:
+
+- [ ] `Aldros-art` deposunu commit + push et → Netlify deploy
+- [ ] İki adresin de açıldığını doğrula (giriş istemeden, **JavaScript kapalıyken**)
+- [ ] Oyunda onay ekranındaki linke basıp siteye gittiğini cihazda dene
+- [ ] Aynı URL'yi Play Console ve App Store Connect formlarına gir
+- [ ] (İsteğe bağlı) Panthop'a ayrı bir iletişim adresi istersen PRIVACY.md, iki
+      HTML sayfası ve mağaza formlarında aynı anda değiştir
+
+Metin ileride değişirse: iki HTML sayfasını güncelle + [js/storage.js](js/storage.js)
+içindeki `PRIVACY_VERSION`'ı artır (oyuncular yeni sürümü bir kez daha onaylar).
+
+---
+
+## 2.5. Kod tarafındaki yayın engelleri — ÇÖZÜLDÜ (2026-09-12)
+
+### a) Three.js artık yerel ✅
+Önceden importmap `three`'yi `https://unpkg.com`'dan çekiyordu: internetsiz oyun
+açılmıyordu, iOS'ta WKWebView `capacitor://` altında Service Worker
+çalıştırmadığı için her açılışta ağ gerekiyordu, App Store 2.5.2 riski vardı ve
+"hiçbir veri gönderilmiyor" diyen gizlilik metniyle çelişiyordu.
+
+- `three@0.161.0` gerçek bağımlılık oldu (`package.json`)
+- [tools/build.mjs](tools/build.mjs) minified derlemeyi (675 KB) **depo köküne**
+  `vendor/three/` altına kopyalıyor, oradan `dist/`e gidiyor — böylece `npm start`
+  ve paketlenen uygulama aynı yolu çözüyor
+- importmap → `./vendor/three/three.module.js`
+- Service Worker: `three` shell önbelleğine eklendi, ölü CDN rotası kaldırıldı
+  (sürüm `wj-v56`)
+- `vendor/` `.gitignore`'da — `node_modules`'tan üretiliyor
+
+**Doğrulandı:** `dist/` ve `android/app/src/main/assets/public/` içinde tek bir
+CDN referansı kalmadı.
+
+> Not: artık `npm start`'tan önce en az bir kez `npm run build` gerekiyor
+> (vendor/ o zaman oluşuyor).
+
+### b) UMP onayı + iOS ATT eklendi ✅
+[js/services/providers/admob.js](js/services/providers/admob.js) → `ensureConsent()`,
+`AdMob.initialize()`'dan **önce** çalışıyor:
+
+1. `requestConsentInfo()` → gerekiyorsa `showConsentForm()` (AEA / İngiltere /
+   İsviçre; başka bölgede hiçbir şey gösterilmez)
+2. iOS'ta `trackingAuthorizationStatus()` → `notDetermined` ise
+   `requestTrackingAuthorization()` (ATT istemi, UMP formundan **sonra**)
+
+Google ayrıca formun kapsadığı oyuncuların fikrini değiştirebilmesini şart
+koşuyor: **Ayarlar → REKLAM TERCİHLERİ** butonu eklendi, yalnızca UMP gerekli
+dediğinde görünür.
+
+- [ ] AdMob konsolunda **Privacy & messaging → GDPR mesajı** oluştur
+      (form metni orada yazılır; oluşturulmazsa `showConsentForm` boş döner)
+- [ ] AEA cihazında/VPN ile onay formunun çıktığını dene
+- [ ] iOS cihazında ATT isteminin çıktığını dene
+
+### c) Android SDK seviyeleri ✅ — ve yolda çıkan kırık build
+`android/variables.gradle`: `minSdkVersion 23 → 24`, `compileSdk/targetSdk 35 → 36`.
+
+**Önemli:** Android derlemesi bu değişiklikten **önce zaten kırıktı** —
+`minSdkVersion 23`, `capacitor-game-connect-7`'nin getirdiği
+`play-services-games-v2:22.0.0`'ın istediği 24'ün altında kalıyor ve manifest
+merger hata veriyordu. targetSdk'den bağımsız, mevcut bir hataydı; bu hâliyle
+APK/AAB hiç üretilemezdi.
+
+minSdk 24, Android 6.0 (Marshmallow) desteğini bırakmak demek — Play Games
+bağımlılığı bunu zaten zorunlu kılıyor.
+
+**Doğrulandı:** `gradlew :app:assembleDebug` → **BUILD SUCCESSFUL**; birleşmiş
+manifest `minSdkVersion="24" targetSdkVersion="36"`.
+
+> targetSdk 36, Play'in 31 Ağustos 2026 sonrası yeni uygulamalardan istediği
+> seviye. Gönderimde Console farklı bir şey isterse burayı güncelle.
+
+---
+
+### d) Ödüllü reklam artık kilitlenmiyor ✅
+Oyuncu reklamı erken kapattığında `showRewarded()` sonsuza dek askıda kalıyordu:
+eklenti `showRewardVideoAd()` çağrısını **yalnızca** ödül callback'inin içinde
+çözüyor (Android `RewardedAdCallbackAndListeners`, iOS `AdRewardExecutor` —
+ikisinde de aynı). Ödül kazanılmayınca çağrı ne resolve ne reject oluyordu.
+
+Etkisi: "KABUK X2" butonu `is-busy` hâlinde donup kalıyor, o oyun sonu için
+tekrar denenemiyordu. (Ses, sekme görünürlüğü dinleyicisi sayesinde kendini
+toparlıyordu.)
+
+Düzeltme: akış artık Google'ın fullscreen olaylarıyla sürülüyor — `Rewarded`
+bayrağı kaldırıyor, `Dismissed` / `FailedToShow` beklemeyi bitiriyor. Böylece
+her durumda sonuçlanıyor.
+
+### e) iOS ATT metni tek dilde ⚠️
+`tools/patch-ios-plist.sh` → `NSUserTrackingUsageDescription` yalnızca Türkçe.
+Oyun İngilizce de desteklediği için ATT istemi İngiliz kullanıcıya Türkçe metin
+gösterir. Reddedilme sebebi değil ama kalite kaybı.
+
+- [ ] (İsteğe bağlı) Mac'te `InfoPlist.strings` ile tr/en yerelleştirmesi ekle
 
 ---
 
@@ -129,11 +230,11 @@ Gereken minimum: **Play** en az 2 telefon görüntüsü + 1024×500 öne çıkan
 - [ ] Çıkan `.aab` dosyasını bir yere al
 
 ### 5c. Play Games Services (başarım aynalama — opsiyonel ama bağlı)
-Oyunda 22 başarım var. Play Games'e aynalanması için Console'da bunları oluşturup
+Oyunda **32** başarım var. Play Games'e aynalanması için Console'da bunları oluşturup
 ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sorunsuz çalışır.)
 
 - [ ] Play Console → Grow → Play Games Services → kurulumu yap, **SHA-1**'i (5a) ekle
-- [ ] Şu 22 başarımı oluştur (yerel ID → senin verdiğin Play ID):
+- [ ] Şu 32 başarımı oluştur (yerel ID → senin verdiğin Play ID):
 
   | Grup | Yerel ID'ler |
   |---|---|
@@ -141,6 +242,9 @@ ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sor
   | Parçalama | `smash_10` `smash_30` `smash_75` `smash_150` `smash_300` `smash_600` |
   | Koşu | `runs_5` `runs_25` `runs_100` `runs_500` |
   | Zıplama | `jumps_50` `jumps_250` `jumps_1000` `jumps_5000` |
+  | Oyun süresi | `time_600` `time_1800` `time_3600` `time_10800` `time_36000` |
+  | Hayatta kalma | `runtime_30` `runtime_60` `runtime_120` `runtime_300` |
+  | Sır | `musician` |
 
 - [ ] Play'in verdiği ID'leri [js/services/providers/playgames.js](js/services/providers/playgames.js) `LOCAL_TO_PLAY` haritasına yaz
 - [ ] `npm run cap:sync` + yeniden derle
@@ -168,7 +272,7 @@ ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sor
 - [ ] **+ Capability → Game Center** ekle
 
 ### 6b. Game Center başarımları (opsiyonel, Play ile ayna)
-- [ ] App Store Connect → uygulaman → Services → Game Center → 22 başarımı tanımla
+- [ ] App Store Connect → uygulaman → Services → Game Center → 32 başarımı tanımla
       (5c'deki aynı yerel ID listesi, önerilen GC ID biçimi `panthop.ms_25` vb.)
 - [ ] ID'leri [js/services/providers/gamecenter.js](js/services/providers/gamecenter.js) `LOCAL_TO_GC` haritasına yaz
 - [ ] `npm run cap:sync`
@@ -197,10 +301,13 @@ ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sor
 ---
 
 ## Hızlı özet — SERT ENGELLER (bunlar olmadan yayınlanamaz)
-1. **Gizlilik politikası URL'si** yok → oluştur + barındır (2. bölüm)
-2. **Ekran görüntüleri** yok (`store/raw/` boş) → çek + `npm run store:gfx` (4. bölüm)
-3. **Geliştirici hesapları** → Play 25$, Apple 99$/yıl (1. bölüm)
-4. **Android imza keystore** → oluştur + güvenle sakla (5a)
+1. **Gizlilik sayfalarını yayına al** → `Aldros-art` deposunu push et (2. bölüm)
+2. **AdMob GDPR mesajı** → konsolda oluştur, yoksa onay formu boş döner (2.5b)
+3. **Ekran görüntüleri** yok (`store/raw/` boş) → çek + `npm run store:gfx` (4. bölüm)
+4. **Geliştirici hesapları** → Play 25$, Apple 99$/yıl (1. bölüm)
+5. **Android imza keystore** → oluştur + güvenle sakla (5a)
+
+Çözülenler: ~~Three.js CDN~~ (2.5a) · ~~UMP/ATT~~ (2.5b) · ~~kırık Android build + targetSdk~~ (2.5c) · ~~gizlilik metni + oyun içi onay~~ (2. bölüm)
 
 ## Yumuşak işler (test ID'yle yayınlanabilir ama önerilmez)
 - Gerçek **AdMob ID'leri** (3. bölüm) — test ID'yle canlıya çıkma, gelir gelmez + politika riski
