@@ -20,6 +20,10 @@ PWA testi için:
 
 ## Android APK (Capacitor)
 
+> **minSdk 24 (Android 7.0):** `capacitor-game-connect-7` -> 
+> `play-services-games-v2` en az 24 istiyor; 23'te manifest merger hata verip
+> derlemeyi tamamen durduruyor. Android 6.0 desteklenmiyor.
+
 ### Gereksinimler (tek seferlik kurulum)
 
 1. **JDK 17** (Adoptium / Microsoft Build of OpenJDK)
