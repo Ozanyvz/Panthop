@@ -18,6 +18,8 @@ const REWARDED_UNIT = {
 const USE_TEST_ADS = true;
 
 const REWARD_EVENT = 'onRewardedVideoAdReward';
+const DISMISS_EVENT = 'onRewardedVideoAdDismissed';
+const FAIL_SHOW_EVENT = 'onRewardedVideoAdFailedToShow';
 
 function rewardedUnitId() {
   const platform = globalThis.Capacitor?.getPlatform?.();
@@ -103,21 +105,44 @@ function rewardedReady() {
   return loaded;
 }
 
-// Show the loaded rewarded ad. Resolves true ONLY when the user earned the
-// reward (detected via the Rewarded event and/or the resolved reward item).
+/* Show the loaded rewarded ad. Resolves true ONLY when the player earned the
+   reward, and — importantly — ALWAYS resolves.
+
+   showRewardVideoAd() cannot be awaited on its own: the plugin resolves that
+   call only from inside the reward callback (Android AdRewardExecutor ->
+   RewardedAdCallbackAndListeners.getOnUserEarnedRewardListener, iOS
+   AdRewardExecutor's reward closure). A player who closes the ad early earns
+   nothing, so the call is never resolved or rejected and the promise stays
+   pending forever — which used to leave the "2x bark" button stuck mid-flight
+   with no way to retry.
+
+   Google's own fullscreen callbacks are what actually bound the ad: Dismissed
+   fires whether or not a reward was earned, FailedToShow when it never opened.
+   So the reward event just raises a flag and those two end the wait. */
 async function showRewarded() {
   if (!loaded) await prepareRewarded();
   if (!loaded) return false;
 
   let rewarded = false;
-  const handle = await AdMob.addListener(REWARD_EVENT, () => { rewarded = true; });
+  let end;
+  const ended = new Promise((resolve) => { end = resolve; });
+  const handles = [];
+  const listen = async (event, fn) => {
+    try { handles.push(await AdMob.addListener(event, fn)); } catch { /* ignore */ }
+  };
+
+  // Registered before the ad opens, or an event could land before we listen.
+  await listen(REWARD_EVENT, () => { rewarded = true; });
+  await listen(DISMISS_EVENT, () => end());
+  await listen(FAIL_SHOW_EVENT, () => end());
+
   try {
-    const item = await AdMob.showRewardVideoAd();   // resolves when the ad flow ends
-    if (item && (item.amount != null || item.type != null)) rewarded = true;
-  } catch {
-    rewarded = false;
+    // Rejects when nothing was prepared — that is the one case where no
+    // fullscreen callback will ever fire, so end the wait ourselves.
+    AdMob.showRewardVideoAd().catch(() => end());
+    await ended;
   } finally {
-    try { await handle.remove(); } catch { /* ignore */ }
+    for (const h of handles) { try { await h.remove(); } catch { /* ignore */ } }
     loaded = false;        // each ad is single-use
     prepareRewarded();     // preload the next one for the following game over
   }
