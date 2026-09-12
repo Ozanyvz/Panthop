@@ -73,6 +73,7 @@ Kaçış **veya** Bilenmiş Pençe **max** olduğunda gelişim ekranında açıl
 | Zıplama sayısı | 50 / 250 / 1000 / 5000 | ödülsüz |
 | Oyun süresi (toplam) | 10dk / 30dk / 1sa / 3sa / 10sa | ödülsüz |
 | Hayatta kalma (tek koşu) | 30sn / 1dk / 2dk / 5dk | ödülsüz |
+| Gizli — Müzisyen | ard arda 5 eşit zıplama aralığı (6 zıplama) | ödülsüz |
 
 ## 5. Denge durumu
 
@@ -90,6 +91,8 @@ Gözlemler / dengeleme adayları:
 - [ ] Zorluk rampası artık 200 skorda tavan yapıyor; milestone eşikleri (25…1000) bu eğriye göre yeniden gözden geçirilebilir.
 
 ## 6. Değişiklik günlüğü
+
+- **2026-08-20** — **Gizli başarım: Müzisyen.** Tek bir koşuda ard arda **5 zıplama aralığı** aynı ritmi tutturunca (yani 6 zıplama, aralıklar birbirinden en fazla ±5 salise sapabilir) açılır. **Ödülsüz** — ekonomiye para girişi yok. Başarımlar ekranında yeni "SIRLAR" grubunda duruyor; açılana kadar adı/açıklaması "???" olarak gizli, sadece "?" karesi görünür. Koşu sırasında ses + titreşimle, koşu sonunda rozetle bildirilir. Sayaçlardan türetilemediği için açılışı `wj_secrets_v1` altında saklanıyor.
 
 - **2026-08-10** — **Süre başarımları eklendi:** iki yeni ödülsüz grup — *Oyun Süresi* (toplam oynama, 10dk→10sa) ve *Hayatta Kalma* (en uzun tek koşu, 30sn→5dk). Koşu saati HUD'da skorun altında gösteriliyor; ilk zıplamayla başlar, duraklatmada durur. Ekonomiye para girişi yok (ödülsüz), sadece başarım içeriği.
 

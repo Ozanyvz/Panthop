@@ -400,6 +400,34 @@ const ICONS = {
     ],
   },
 
+  // ♫ müzisyen (gizli başarım) — beamed eighth notes. Violet, so the secrets
+  // group reads apart from the earned-by-counting ones at a glance.
+  note: {
+    palette: {
+      d: '#2b2340', // outline
+      b: '#c9a7ff', // note body + beam
+      s: '#8d6ad0', // shade along the lower/right edge
+    },
+    grid: [
+      '.....dddddddddd.',
+      '.....dbbbbbbbbd.',
+      '.....dbbbbbbbbd.',
+      '.....dssssssssd.',
+      '.....dbd....dbd.',
+      '.....dbd....dbd.',
+      '.....dbd....dbd.',
+      '.....dbd....dbd.',
+      '....ddbdd..ddbdd',
+      '...dbbbbd.dbbbbd',
+      '...dbbbbd.dbbbbd',
+      '...dbbssd.dbbssd',
+      '...dssssd.dssssd',
+      '....dddd...dddd.',
+      '................',
+      '................',
+    ],
+  },
+
   // 🗡 pençe bileme — a honed talon: curved bone claw with a glint off the edge.
   clawhone: {
     palette: {

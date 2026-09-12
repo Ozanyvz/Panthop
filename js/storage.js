@@ -21,6 +21,9 @@ const KEY_TIME_BEST = 'wj_time_best_v1';
 // happened. Recorded only — nothing reads it back into gameplay yet.
 const KEY_RUN_LOG = 'wj_run_log_v1';
 const RUN_LOG_LIMIT = 10;
+// Secret achievements: earned by a one-off event during a run rather than by a
+// counter, so unlike the tiered ones their unlock has to be stored.
+const KEY_SECRETS = 'wj_secrets_v1';
 // Achievement ids whose reward the player has already collected.
 const KEY_ACH_COLLECTED = 'wj_ach_collected_v1';
 const RECENT_LIMIT = 5;
@@ -319,6 +322,29 @@ export function recordRunLog({ startedAt, duration, jumps }) {
   }
 }
 
+/* ---------- Secret achievements ----------
+   A plain id set. Nothing derives these: the run that earns one calls
+   unlockSecret() and that flag is what the Achievements screen reads back. */
+export function getSecrets() {
+  try {
+    const raw = localStorage.getItem(KEY_SECRETS);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+// Returns true only the FIRST time an id is unlocked, so the caller can
+// announce it once and stay quiet on later repeats.
+export function unlockSecret(id) {
+  const set = getSecrets();
+  if (set.has(id)) return false;
+  set.add(id);
+  localStorage.setItem(KEY_SECRETS, JSON.stringify([...set]));
+  return true;
+}
+
 /* ---------- Achievements ----------
    Unlock state is DERIVED (milestone reached / smash total ≥ tier), so only the
    "reward already collected" set needs persisting. */
@@ -368,7 +394,7 @@ export function markUpgradesSeen(ids) {
 export function resetProgress() {
   [KEY_BEST, KEY_RECENT, KEY_HIGHSCORES, KEY_MILESTONES, KEY_COINS, KEY_LEAVES,
    KEY_FEATHERS, KEY_SMASH_PROG, KEY_SMASH_TOTAL, KEY_RUNS_TOTAL, KEY_JUMPS_TOTAL,
-   KEY_TIME_TOTAL, KEY_TIME_BEST, KEY_RUN_LOG,
+   KEY_TIME_TOTAL, KEY_TIME_BEST, KEY_RUN_LOG, KEY_SECRETS,
    KEY_ACH_COLLECTED, KEY_UPGRADES, KEY_SEEN_UPG]
     .forEach(k => localStorage.removeItem(k));
   ['sword', 'dodge'].forEach(id => localStorage.removeItem(KEY_INF_PREFIX + id + '_v1'));

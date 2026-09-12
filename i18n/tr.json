@@ -142,6 +142,7 @@
     "group_jumps": "ZIPLAMALAR",
     "group_time": "OYUN SURESI",
     "group_runtime": "HAYATTA KALMA",
+    "group_secret": "SIRLAR",
     "unit_s": "sn",
     "unit_m": "dk",
     "unit_h": "sa",
@@ -163,6 +164,10 @@
     "time_desc": "Toplam {n} boyunca oyna.",
     "runtime_name": "{n} Hayatta Kalma",
     "runtime_desc": "Tek bir kosuda {n} boyunca hayatta kal.",
+    "secret_name": "???",
+    "secret_desc": "Gizli basarim. Nasil acildigini kendin bulmalisin.",
+    "musician_name": "Muzisyen",
+    "musician_desc": "Ard arda 6 ziplamayi ayni ritimde tuttur.",
     "empty": "Henuz basarim yok"
   }
 }

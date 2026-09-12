@@ -28,6 +28,7 @@ import {
   newlyUnlockedSmashAchievements,
   ACH_GROUPS,
   TIME_GROUPS,
+  awardSecret,
   REWARD_ICONS,
 } from './achievements.js';
 import * as i18n from './i18n.js';
@@ -168,6 +169,8 @@ let runFeatherThreshold = 20; // 0–100 dice threshold for a feather drop, snap
 let runJumps = 0;         // jumps performed this run → banked into the lifetime jump total
 let runJumpTimes = [];    // second of the run each jump happened on → per-run log
 let runStartedAt = 0;     // wall-clock (epoch ms) the run began → per-run log
+let rhythmCaught = false; // the Müzisyen rhythm already matched this run
+let runNewSecrets = [];   // secrets earned for the FIRST time this run → game-over badges
 
 /* ---------- Screen management ---------- */
 function show(el) { el.classList.remove('hidden'); }
@@ -492,6 +495,9 @@ function renderUnlockedAchievements(newMilestones, newSmashAch) {
   };
   (newMilestones || []).forEach(m => addBadge('', '★', i18n.t('gameover.milestone_first', { n: m.value })));
   (newSmashAch || []).forEach(a => addBadge('ms-smash', iconHTML('burst'), i18n.t('achievements.smash_name', { n: a.threshold })));
+  // Secrets caught this run — read straight off the run state, since they are
+  // earned mid-run rather than derived from the score at game over.
+  runNewSecrets.forEach(id => addBadge('ms-secret', iconHTML('note'), i18n.t('achievements.' + id + '_name')));
   return i > 0;
 }
 
@@ -1102,15 +1108,22 @@ function achThresholdText(def) {
   return TIME_GROUPS.has(def.group) ? fmtDurationShort(def.threshold) : def.threshold;
 }
 
-function achName(def) {
+// A secret keeps its name and description hidden until it is earned — the
+// whole point is that the player doesn't know what to aim for.
+function achName(def, unlocked) {
+  if (def.secret) return i18n.t(unlocked ? `achievements.${def.id}_name` : 'achievements.secret_name');
   return i18n.t(`achievements.${def.group}_name`, { n: achThresholdText(def) });
 }
 
-function achDesc(def) {
+function achDesc(def, unlocked) {
+  if (def.secret) return i18n.t(unlocked ? `achievements.${def.id}_desc` : 'achievements.secret_desc');
   return i18n.t(`achievements.${def.group}_desc`, { n: achThresholdText(def) });
 }
 
-function achTileNum(def) {
+function achTileNum(def, unlocked) {
+  // Secrets count nothing: a '?' while hidden, then nothing — once it's earned
+  // the icon is the whole reveal.
+  if (def.secret) return unlocked ? '' : '?';
   if (TIME_GROUPS.has(def.group)) return fmtDurationShort(def.threshold);
   const n = def.threshold;
   return n >= 1000 ? `${n / 1000}K` : String(n);
@@ -1155,10 +1168,13 @@ function renderAchievements() {
       else if (st.collected) cls += ' collected';
       tile.className = cls;
       tile.dataset.id = st.def.id;
+      // An earned secret has no number under its icon; skip the span entirely
+      // so the tile's centred column doesn't carry an empty row.
+      const num = achTileNum(st.def, st.unlocked);
       tile.innerHTML =
         (st.collectible ? '<span class="ach-star">★</span>' : '') +
         `<span class="ach-tile-icon">${st.unlocked ? st.def.icon : iconHTML('lock')}</span>` +
-        `<span class="ach-tile-num">${achTileNum(st.def)}</span>`;
+        (num ? `<span class="ach-tile-num">${num}</span>` : '');
       grid.appendChild(tile);
     }
     section.appendChild(grid);
@@ -1177,8 +1193,8 @@ function renderAchModal(st) {
   const medalReward = def.reward ? `ach-reward-${def.reward.currency}` : 'ach-reward-none';
   achModalMedal.className = `ach-modal-medal ${medalReward} ${st.unlocked ? 'unlocked' : 'locked'}`;
   achModalIcon.innerHTML = st.unlocked ? def.icon : iconHTML('lock');
-  achModalName.textContent = achName(def);
-  achModalDesc.textContent = achDesc(def);
+  achModalName.textContent = achName(def, st.unlocked);
+  achModalDesc.textContent = achDesc(def, st.unlocked);
 
   // Progress bar — only meaningful while still locked.
   const pct = Math.round(Math.min(1, st.progress / st.target) * 100);
@@ -1189,7 +1205,8 @@ function renderAchModal(st) {
   achModalProgress.innerHTML =
     `<span class="ach-prog-bar"><span class="ach-prog-fill" style="width:${pct}%"></span></span>` +
     `<span class="ach-prog-text">${i18n.t('achievements.progress', { cur, tgt })}</span>`;
-  achModalProgress.classList.toggle('hidden', st.unlocked);
+  // Secrets never show progress — a 0/1 bar would leak that one exists to find.
+  achModalProgress.classList.toggle('hidden', st.unlocked || !!def.secret);
 
   // Reward row only for achievements that actually grant one.
   if (def.reward) {
@@ -1364,6 +1381,37 @@ function setTimeHUD(sec) {
   if (timeValueEl) timeValueEl.textContent = fmtClock(sec);
 }
 
+/* ---------- Rhythm watch (gizli başarım: Müzisyen) ----------
+   Jump stamps are kept at salise (1/100 s) precision, so "the same rhythm" is
+   RHYTHM_GAPS consecutive gaps that all match the window's first gap.
+
+   The match can't be salise-exact: the run clock advances once per frame, so at
+   60fps a gap already quantises to ~1.7 salise steps and no human clears that
+   bar. RHYTHM_TOLERANCE is how far a single gap may drift and still count as
+   the same beat; RHYTHM_MIN_GAP keeps a burst of near-instant taps (which the
+   climb can produce on its own at high speed) from reading as a played rhythm. */
+const RHYTHM_GAPS = 5;           // matching gaps in a row — so 6 jumps
+const RHYTHM_TOLERANCE = 0.05;   // ±5 salise per gap
+const RHYTHM_MIN_GAP = 0.15;     // seconds; below this it isn't a beat
+
+function checkRhythm() {
+  if (rhythmCaught) return;                            // one catch per run is enough
+  if (runJumpTimes.length < RHYTHM_GAPS + 1) return;
+  const win = runJumpTimes.slice(-(RHYTHM_GAPS + 1));
+  const beat = win[1] - win[0];
+  if (beat < RHYTHM_MIN_GAP) return;
+  for (let i = 2; i < win.length; i++) {
+    if (Math.abs((win[i] - win[i - 1]) - beat) > RHYTHM_TOLERANCE) return;
+  }
+  rhythmCaught = true;
+  // Only ever the first time: felt in the run, then announced at game over.
+  if (awardSecret('musician')) {
+    runNewSecrets.push('musician');
+    audio.sfx('milestone');
+    vibrate([0, 40, 40, 40]);
+  }
+}
+
 function setFeatherRunHUD(n) {
   if (!featherRunChip) return;
   featherRunValEl.textContent = n;
@@ -1474,6 +1522,7 @@ function ensureGame() {
     onJump: (t) => {
       runJumps += 1;
       runJumpTimes.push(Math.round((Number(t) || 0) * 100) / 100);
+      checkRhythm();   // did this jump complete a steady beat? (secret: Müzisyen)
     },
     onTime: (sec) => setTimeHUD(sec),
     onDodgeCharges: (n) => setDodgeHUD(n),
@@ -1503,6 +1552,8 @@ function startGame() {
   runJumps = 0;
   runJumpTimes = [];
   runStartedAt = Date.now();
+  rhythmCaught = false;
+  runNewSecrets = [];
   setFeatherRunHUD(0);
   setTimeHUD(0);
   audio.gameTier(0);   // start the climb soundtrack at tier 1

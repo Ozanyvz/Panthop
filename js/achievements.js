@@ -2,6 +2,7 @@ import {
   MILESTONES, LEAF_REWARDS,
   getBest, getReachedMilestones, getSmashTotal, getRunsTotal, getJumpsTotal,
   getPlayTimeTotal, getPlayTimeBest,
+  getSecrets, unlockSecret,
   getCollectedAchievements, markAchievementCollected,
   addLeaves, addFeathers, addCoins,
 } from './storage.js';
@@ -67,11 +68,19 @@ const RUNTIME_ACH = [
   { id: 'runtime_300', threshold: 300 },
 ].map(t => ({ ...t, group: 'runtime', icon: iconHTML('focus'), reward: null }));
 
+/* Secret achievements. These count nothing — a run fires them (see awardSecret)
+   and the unlock is stored, so there is no threshold worth showing. The screen
+   keeps name, description and icon hidden until one is earned. */
+const SECRET_ACH = [
+  { id: 'musician', icon: iconHTML('note') },
+].map(t => ({ ...t, group: 'secret', secret: true, threshold: 1, reward: null }));
+
 // Groups whose threshold + progress are durations in seconds, not plain counts.
 export const TIME_GROUPS = new Set(['time', 'runtime']);
 
 export const ACHIEVEMENTS = [
   ...MILESTONE_ACH, ...SMASH_ACH, ...RUNS_ACH, ...JUMPS_ACH, ...TIME_ACH, ...RUNTIME_ACH,
+  ...SECRET_ACH,
 ];
 
 const BY_ID = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]));
@@ -84,6 +93,7 @@ export const ACH_GROUPS = [
   { id: 'jumps',     i18nKey: 'achievements.group_jumps' },
   { id: 'time',      i18nKey: 'achievements.group_time' },
   { id: 'runtime',   i18nKey: 'achievements.group_runtime' },
+  { id: 'secret',    i18nKey: 'achievements.group_secret' },
 ];
 
 // Reward currency -> icon HTML (rendered via innerHTML; see js/icons.js).
@@ -95,7 +105,11 @@ export const REWARD_ICONS = { leaf: iconHTML('leaf'), feather: iconHTML('feather
 export function achievementState(def) {
   const collected = getCollectedAchievements().has(def.id);
   let unlocked, progress;
-  if (def.group === 'milestone') {
+  if (def.secret) {
+    // A stored flag, not a counter — it is either earned or it is not.
+    unlocked = getSecrets().has(def.id);
+    progress = unlocked ? 1 : 0;
+  } else if (def.group === 'milestone') {
     unlocked = getReachedMilestones().includes(def.threshold);
     progress = getBest();
   } else {
@@ -108,6 +122,14 @@ export function achievementState(def) {
   }
   const collectible = unlocked && !!def.reward && !collected;
   return { def, unlocked, collected, collectible, progress, target: def.threshold };
+}
+
+// Fires a secret achievement. Returns true only the first time it is earned,
+// so the run that catches it can announce it once.
+export function awardSecret(id) {
+  const def = BY_ID[id];
+  if (!def || !def.secret) return false;
+  return unlockSecret(id);
 }
 
 export function listAchievements() {

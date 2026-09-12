@@ -1076,6 +1076,14 @@ html, body {
 
 .ms-badge .ms-star { font-size: 12px; }
 
+/* A secret caught this run announces in the violet of the secrets group, so it
+   never reads as just another milestone. */
+.ms-badge.ms-secret {
+  background: rgba(201, 167, 255, 0.14);
+  border-color: rgba(201, 167, 255, 0.45);
+  color: #d9c2ff;
+}
+
 /* Obstacle-smash tier badges read in the smash group's warm tone. */
 .ms-badge.ms-smash {
   background: rgba(255, 157, 60, 0.14);
@@ -2324,6 +2332,12 @@ html, body {
 .ach-tile.ach-reward-none {
   border-color: rgba(205, 214, 209, 0.38);
   background: linear-gradient(180deg, rgba(205, 214, 209, 0.10), rgba(205, 214, 209, 0.03));
+}
+/* Secret tiles ignore the reward tint (they pay nothing) and take the group's
+   violet instead — placed after .ach-reward-none so it wins on equal weight. */
+.ach-tile.ach-secret {
+  border-color: rgba(201, 167, 255, 0.45);
+  background: linear-gradient(180deg, rgba(201, 167, 255, 0.14), rgba(201, 167, 255, 0.03));
 }
 .ach-tile.unlocked .ach-tile-num { color: var(--text); }
 .ach-tile.collected { opacity: 0.92; }

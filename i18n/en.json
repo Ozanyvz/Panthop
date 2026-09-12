@@ -142,6 +142,7 @@
     "group_jumps": "JUMPS",
     "group_time": "PLAYTIME",
     "group_runtime": "SURVIVAL",
+    "group_secret": "SECRETS",
     "unit_s": "s",
     "unit_m": "m",
     "unit_h": "h",
@@ -163,6 +164,10 @@
     "time_desc": "Play for {n} in total.",
     "runtime_name": "{n} Survived",
     "runtime_desc": "Survive {n} in a single run.",
+    "secret_name": "???",
+    "secret_desc": "A hidden achievement. Work out how to unlock it yourself.",
+    "musician_name": "Musician",
+    "musician_desc": "Land 6 jumps in a row on the same beat.",
     "empty": "No achievements yet"
   }
 }
