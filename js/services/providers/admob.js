@@ -8,14 +8,20 @@ import { registerPlugin } from '@capacitor/core';
 const AdMob = registerPlugin('AdMob');
 
 /* ---- Ad unit configuration ----
-   Google's official TEST rewarded units are used until real ids are provided.
-   To go live: paste the real rewarded unit ids below and set USE_TEST_ADS=false.
-   (The AdMob App ID itself lives in AndroidManifest.xml / iOS Info.plist.) */
+   The App ID that pairs with these lives in AndroidManifest.xml (Android) and
+   tools/patch-ios-plist.sh -> Info.plist (iOS).
+
+   !! iOS IS STILL ON GOOGLE'S TEST UNIT. AdMob ids are per-platform: an iOS app
+   has to be created separately in the console and its own rewarded unit pasted
+   below before the first App Store build. Google's test units always serve test
+   ads no matter what USE_TEST_ADS says, so iOS simply keeps showing test ads
+   until then — it will not earn, and must not ship that way. */
 const REWARDED_UNIT = {
-  android: 'ca-app-pub-3940256099942544/5224354917', // Google test rewarded (Android)
-  ios:     'ca-app-pub-3940256099942544/1712485313', // Google test rewarded (iOS)
+  android: 'ca-app-pub-6482116152023017/3833875129', // Panthop rewarded (Android)
+  ios:     'ca-app-pub-3940256099942544/1712485313', // TODO(ios-ids): Google TEST unit
 };
-const USE_TEST_ADS = true;
+// Registers the running device as a test device. Real units + false = real ads.
+const USE_TEST_ADS = false;
 
 const REWARD_EVENT = 'onRewardedVideoAdReward';
 const DISMISS_EVENT = 'onRewardedVideoAdDismissed';

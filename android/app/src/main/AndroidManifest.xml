@@ -30,12 +30,11 @@
         </provider>
 
         <!-- AdMob application id. Required or the app crashes on launch.
-             TODO(real-ids): replace with your real AdMob App ID before release
-             (and flip USE_TEST_ADS=false in js/services/providers/admob.js).
-             Value below is Google's official SAMPLE/TEST app id. -->
+             Real Panthop Android app id (AdMob console -> Panthop (Android) ->
+             App settings). The iOS counterpart lives in tools/patch-ios-plist.sh. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-6482116152023017~7362056597" />
     </application>
 
     <!-- Permissions -->
