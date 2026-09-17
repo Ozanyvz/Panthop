@@ -34,7 +34,8 @@
              App settings). The iOS counterpart lives in tools/patch-ios-plist.sh. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-6482116152023017~7362056597" />
+            android:value="ca-app-pub-6482116152023017~7362056597"
+        />
     </application>
 
     <!-- Permissions -->
