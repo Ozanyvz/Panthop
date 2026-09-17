@@ -155,67 +155,57 @@ gösterir. Reddedilme sebebi değil ama kalite kaybı.
 
 ---
 
-## 3. AdMob — gerçek reklam ID'leri (şu an Google TEST ID'leri)
+## 3. AdMob — Android BİTTİ, iOS açık
 
-Şu an test reklamları çalışıyor. **Gerçek para kazanmak ve mağaza politikasına uymak
-için** kendi AdMob hesabından gerçek ID'ler alıp aşağıdaki 4 yeri değiştir.
+**Android gerçek kimliklere geçti** (2026-09-18):
+- `AndroidManifest.xml` → `ca-app-pub-6482116152023017~7362056597`
+- `admob.js` → rewarded (android) `ca-app-pub-6482116152023017/3833875129`
+- `USE_TEST_ADS = false`
 
-- [ ] https://admob.google.com → hesap aç
-- [ ] **Android uygulaması** oluştur → App ID'yi (`ca-app-pub-XXXX~YYYY`) al
-- [ ] **iOS uygulaması** ayrıca oluştur (Android ID iOS'ta çalışmaz) → App ID'yi al
-- [ ] Her ikisi için birer **Ödüllü (Rewarded)** reklam birimi oluştur → Ad Unit ID'lerini al
+İmzalı AAB'nin içinden doğrulandı.
 
-Sonra şu dosyaları düzenle:
+Kalanlar:
+- [ ] **iOS kimlikleri** → [6a bölümü](#6a-kodda-açık-kalanlar-mace-geçmeden-önce)
+- [ ] **AdMob → Gizlilik ve mesajlaşma → GDPR mesajı** oluştur.
+      Bu olmadan Avrupa'da onay formu boş döner ve orada reklam sunulmayabilir.
+      (Kod tarafı hazır: `ensureConsent()` formu çağırıyor.)
+- [ ] Aynı sayfada **ABD eyalet düzenlemeleri** mesajı
+- [ ] Yayınlandıktan sonra AdMob uygulamasını Play kaydına bağla →
+      `app-ads.txt` doğrulaması o zaman çalışır
 
-**a) Android App ID** → [android/app/src/main/AndroidManifest.xml](android/app/src/main/AndroidManifest.xml) satır ~38
-```
-android:value="ca-app-pub-3940256099942544~3347511713"   ← kendi Android App ID'nle değiştir
-```
-
-**b) Ödüllü reklam birimleri + test kapatma** → [js/services/providers/admob.js](js/services/providers/admob.js) satır 14–18
-```
-android: 'ca-app-pub-3940256099942544/5224354917',   ← kendi Android rewarded unit ID
-ios:     'ca-app-pub-3940256099942544/1712485313',   ← kendi iOS rewarded unit ID
-const USE_TEST_ADS = true;                            ← false yap
-```
-
-**c) iOS App ID** → [tools/patch-ios-plist.sh](tools/patch-ios-plist.sh) satır 14
-```
-GAD_APP_ID="ca-app-pub-3940256099942544~1458002511"   ← kendi iOS App ID'nle değiştir
-```
-(Mac'te `npm run ios:setup` tekrar çalıştırılınca Info.plist'e işlenir.)
-
-- [ ] a, b, c değiştirildi
-- [ ] `npm run build` tekrar çalıştırıldı
-- [ ] **Uyarı:** İlk gönderimlerde ID'ler yeniyse reklam "no fill" verebilir; bu normaldir.
-      Test etmek için `USE_TEST_ADS`'i cihazda geçici `true` bırakabilirsin ama mağazaya
-      **`false`** ile gönder.
+> Yeni reklam birimleri ilk saatlerde "no fill" verebilir, bu normaldir.
 
 ---
 
-## 4. Ekran görüntüleri (şu an `store/raw/` BOŞ)
+## 4. Ekran görüntüleri — BİTTİ
 
-Mağaza vitrini için gerçek oyun ekran görüntüleri lazım. `store/play` ve `store/ios`
-altındaki mevcut PNG'ler eski/taslak olabilir — yeniden üret.
+İki dilde tam set üretildi (2026-09-18). Ham kareler `store/raw/tr/` ve
+`store/raw/en/` altında commit'li; çıktılar `npm run store:gfx` ile saniyeler
+içinde yeniden üretiliyor (üretilenler `.gitignore`'da).
 
-- [ ] Oyunu telefonda veya tarayıcıda aç, şu 6 ekranın görüntüsünü al:
-  1. Oyun oynanışı (zıplama anı)
-  2. Engel aşma / yukarı tırmanma
-  3. Gelişim (upgrade) ekranı
-  4. Başarımlar ekranı
-  5. Pençe/kalkan gücü anı
-  6. Oyun sonu / yeni rekor ekranı
-- [ ] Dosyaları `01-...`, `02-...` … diye sırayla adlandırıp `store/raw/` içine koy
-      (sıra, başlıklarla eşleşir — bkz. [store/README.md](store/README.md))
-- [ ] `npm run store:gfx` çalıştır → `store/play/` ve `store/ios/` otomatik üretilir
-- [ ] Üretilen görselleri gözden geçir (başlık metinleri ASCII, doğru mu?)
+| Çıktı | Nerede |
+|---|---|
+| Play öne çıkan görsel | `store/play/feature-1024x500.png` |
+| Play telefon (6'şar) | `store/play/tr/`, `store/play/en/` |
+| App Store (3 boyut × 6) | `store/ios/tr/`, `store/ios/en/` |
+| Uygulama ikonu 512 | `assets/icons/icon-512.png` |
 
-Gereken minimum: **Play** en az 2 telefon görüntüsü + 1024×500 öne çıkan görsel;
-**App Store** en az 1 tane 6.9" iPhone görüntüsü (1290×2796).
+Başlıkları değiştirmek için `tools/make-store-graphics.mjs` → `CAPTIONS`.
 
 ---
 
 ## 5. GOOGLE PLAY — yayın adımları
+
+> ### ⚠️ Kapalı test zorunluluğu
+> Bu hesap için Google, production'a çıkmadan önce **en az 12 test kullanıcısıyla
+> en az 14 gün kesintisiz kapalı test** şartı koyuyor (Kontrol paneli → Üretim).
+> Yeni bireysel geliştirici hesaplarında geçerli olan kural.
+>
+> Sıra: kurulumu tamamla → kapalı test sürümünü yayınla → 12 tester topla →
+> 14 gün bekle → üretim erişimi için başvur.
+>
+> **Dahili test (internal testing)** bu sayaca dahil değil ama anında çalışıyor;
+> kendi cihazında denemek için onu kullan.
 
 ### 5a. İmzalama anahtarı (keystore) — bir kez, çok önemli
 - [ ] Release keystore oluştur (Android Studio → Build → Generate Signed Bundle/APK →
@@ -264,31 +254,69 @@ ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sor
 ## 6. APP STORE (iOS) — Mac mini'de yapılır
 
 > Tüm iOS build'leri Mac'te. Ön hazırlık tamam ([BUILD.md](BUILD.md) iOS bölümü).
+>
+> **Android tarafı ilerledikçe iOS'ta açık kalan işler birikti. Aşağıdaki 6a
+> listesi Mac'e geçmeden önce kapatılması gerekenleri topluyor — kodda TODO
+> olarak da duruyorlar.**
 
-### 6a. Mac'te ilk kurulum
+### 6a. KODDA AÇIK KALANLAR (Mac'e geçmeden önce)
+
+#### AdMob iOS kimlikleri — ZORUNLU
+Android gerçek kimliklere geçti, **iOS hâlâ Google'ın TEST reklam biriminde.**
+AdMob kimlikleri platforma özel; konsolda ayrı bir iOS uygulaması oluşturman
+gerekiyor (Android'inki iOS'ta geçersiz).
+
+- [ ] AdMob → Uygulama ekle → **iOS** → Panthop → **Uygulama kimliği** (`~` içerir)
+- [ ] Aynı uygulamaya **Ödüllü** reklam birimi → **birim kimliği** (`/` içerir)
+- [ ] [tools/patch-ios-plist.sh](tools/patch-ios-plist.sh) satır 14 → `GAD_APP_ID`
+- [ ] [js/services/providers/admob.js](js/services/providers/admob.js) → `REWARDED_UNIT.ios`
+- [ ] Mac'te `npm run ios:setup` tekrar çalıştır (Info.plist'e işlensin)
+
+> Google'ın test birimleri `USE_TEST_ADS` ne olursa olsun test reklamı döndürür.
+> Yani iOS bu hâliyle çöker değil, sessizce test reklamı gösterir ve **hiç kazanç
+> getirmez**. App Store'a bu hâlde gönderme.
+
+#### iOS uygulama ikonu — ZORUNLU
+[tools/make-app-icon.mjs](tools/make-app-icon.mjs) **yalnızca Android** kaynaklarını
+üretiyor. iOS ikon seti henüz yeni tasarımla üretilmedi.
+
+- [ ] Mac'te `npm run cap:assets:ios`
+      (kaynak `assets/icon-only.png` güncel tasarımla senkron tutuluyor)
+- [ ] Xcode'da ikonun doğru göründüğünü doğrula
+
+#### ATT metni tek dilde — İSTEĞE BAĞLI
+`NSUserTrackingUsageDescription` yalnızca Türkçe; İngilizce kullanıcı Türkçe
+metin görür. Reddedilme sebebi değil, kalite kaybı.
+
+- [ ] (İsteğe bağlı) Mac'te `InfoPlist.strings` ile tr/en yerelleştirmesi
+
+### 6b. Mac'te ilk kurulum
 - [ ] Mac'te Xcode kurulu (App Store'dan, güncel sürüm — Nisan 2026 sonrası Xcode 26 gerekir)
 - [ ] `npm run ios:setup` çalıştır (CocoaPods + `cap add ios` + Info.plist + assets + sync)
 - [ ] Xcode → Signing & Capabilities → **Team** seç (Developer hesabın)
 - [ ] **+ Capability → Game Center** ekle
 
-### 6b. Game Center başarımları (opsiyonel, Play ile ayna)
+### 6c. Game Center başarımları (opsiyonel, Play ile ayna)
 - [ ] App Store Connect → uygulaman → Services → Game Center → 32 başarımı tanımla
-      (5c'deki aynı yerel ID listesi, önerilen GC ID biçimi `panthop.ms_25` vb.)
+      (tam liste: [store/basarimlar.md](store/basarimlar.md), önerilen GC ID biçimi `panthop.ms_25`)
 - [ ] ID'leri [js/services/providers/gamecenter.js](js/services/providers/gamecenter.js) `LOCAL_TO_GC` haritasına yaz
 - [ ] `npm run cap:sync`
 
-### 6c. App Store Connect kaydı
+### 6d. App Store Connect kaydı
 - [ ] https://developer.apple.com → Identifiers → Bundle ID `com.simpleonetap.panthop` kaydet
 - [ ] App Store Connect → My Apps → **+ New App**
-- [ ] Metinler → [store/listing-tr.md](store/listing-tr.md) App Store bölümü (ad, alt başlık, anahtar kelimeler hazır)
-- [ ] Ekran görüntüleri: 6.9" iPhone (1290×2796) zorunlu — `store/ios/` altından
-- [ ] **App Privacy** etiketi: "Device ID / Advertising Data — used for tracking" + gizlilik URL'si (2. bölüm)
-- [ ] Yaş derecelendirme anketi + **EU DSA trader** beyanı + fiyat (ücretsiz)
+- [ ] Metinler → [store/listing-tr.md](store/listing-tr.md) ve [store/listing-en.md](store/listing-en.md)
+- [ ] Ekran görüntüleri: 6.9" iPhone (1290×2796) zorunlu — `store/ios/tr/` ve `store/ios/en/`
+- [ ] **App Privacy** etiketi + yaş derecelendirme → [store/form-cevaplari.md](store/form-cevaplari.md)
+- [ ] **EU DSA trader** beyanı + fiyat (ücretsiz)
 
-### 6d. Gönderim
+### 6e. Gönderim
 - [ ] Xcode → Product → **Archive** → Distribute App → App Store Connect → Upload
 - [ ] App Store Connect'te build'i sürüme bağla → **TestFlight**'ta kendin dene
 - [ ] **Submit for Review** (ilk inceleme genelde 1–2 gün)
+
+> iOS'ta Play'deki gibi "12 tester / 14 gün" şartı **yok** — TestFlight'ta kendin
+> deneyip doğrudan incelemeye gönderebilirsin.
 
 ---
 
@@ -300,15 +328,22 @@ ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sor
 
 ---
 
-## Hızlı özet — SERT ENGELLER (bunlar olmadan yayınlanamaz)
-1. **Gizlilik sayfalarını yayına al** → `Aldros-art` deposunu push et (2. bölüm)
-2. **AdMob GDPR mesajı** → konsolda oluştur, yoksa onay formu boş döner (2.5b)
-3. **Ekran görüntüleri** yok (`store/raw/` boş) → çek + `npm run store:gfx` (4. bölüm)
-4. **Geliştirici hesapları** → Play 25$, Apple 99$/yıl (1. bölüm)
-5. **Android imza keystore** → oluştur + güvenle sakla (5a)
+## Hızlı özet — nerede kaldık (2026-09-18)
 
-Çözülenler: ~~Three.js CDN~~ (2.5a) · ~~UMP/ATT~~ (2.5b) · ~~kırık Android build + targetSdk~~ (2.5c) · ~~gizlilik metni + oyun içi onay~~ (2. bölüm)
+**Bitenler:** gizlilik politikası (metin + canlı sayfalar + oyun içi onay + app-ads.txt) ·
+Three.js yerelleştirme · UMP/ATT · kırık Android build + targetSdk 36 ·
+ödüllü reklam kilitlenmesi · keystore + imzalama · ekran görüntüleri (TR+EN) ·
+mağaza metinleri (TR+EN) · form cevapları · uygulama ikonu ·
+AdMob Android gerçek kimlikleri · Android geliştirici doğrulaması
 
-## Yumuşak işler (test ID'yle yayınlanabilir ama önerilmez)
-- Gerçek **AdMob ID'leri** (3. bölüm) — test ID'yle canlıya çıkma, gelir gelmez + politika riski
-- **Play Games / Game Center başarım ID'leri** (5c/6b) — boş bırakılırsa oyun yine çalışır, sadece buluta aynalanmaz
+**Play — sıradaki adımlar:**
+1. Mağaza kaydını doldur (metinler + görseller + formlar hazır)
+2. Dahili teste AAB yükle, cihazda dene
+3. Kapalı test sürümünü yayınla, **12 tester** topla
+4. 14 gün sonra üretim erişimi için başvur
+
+**AdMob:** GDPR mesajı oluştur (yayını engellemez, Avrupa gelirini etkiler)
+
+**iOS:** [6a bölümü](#6a-kodda-açık-kalanlar-mace-geçmeden-önce) — AdMob iOS
+kimlikleri ve iOS ikon seti açık. Mac mini'ye geçmeden önce kapatılmalı.
+
