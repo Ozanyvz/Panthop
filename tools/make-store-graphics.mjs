@@ -6,7 +6,7 @@
 //
 // Per language (Play and the App Store both take a separate screenshot set for
 // each listing language), outputs land under store/<store>/<lang>/:
-//   play/feature-1024x500.png        ← Play feature graphic (language-neutral)
+//   play/<lang>/feature-1024x500.png  ← Play feature graphic (per language)
 //   play/<lang>/NN-phone-1080x1920.png
 //   ios/<lang>/NN-iphone69-1290x2796.png    ← App Store 6.9" (iPhone 15/16 Pro Max)
 //   ios/<lang>/NN-iphone65-1242x2688.png    ← App Store 6.5" (older big iPhones)
@@ -54,6 +54,14 @@ const CAPTIONS = {
   ],
 };
 const LANGS = Object.keys(CAPTIONS);
+
+/* Feature graphic copy. Play takes a separate feature graphic per listing
+   language, so this follows CAPTIONS rather than shipping one Turkish image to
+   every locale. ASCII only, same reason. */
+const FEATURE = {
+  tr: { head: 'TEK TUSLA ZIPLA!', sub: ['YAVRU PANTER PANTHO ILE', 'ZIRVEYE TIRMAN'] },
+  en: { head: 'ONE TAP TO JUMP!', sub: ['CLIMB TO THE TOP WITH', 'PANTHO THE PANTHER CUB'] },
+};
 
 /* Phone screenshots arrive with the OS status bar on top and the gesture/
    navigation bar underneath; both look like clutter in a store listing. The
@@ -334,30 +342,32 @@ async function makeShot({ w: W, h: H, tag, dir }, idx, rawPath, caption, lang) {
 }
 
 /* ---------- Play feature graphic (1024×500) ---------- */
-async function makeFeature() {
+async function makeFeature(lang) {
   const W = 1024, H = 500;
   const mH = 360;
   const mUri = await mascotUri(mH);
+  const copy = FEATURE[lang];
 
   const colX = 490, colW = 480;
   const colCx = colX + colW / 2;
-  const capS = captionScale(['TEK TUSLA ZIPLA!'], colW, 5);
-  const subS = 3;
+  const capS = captionScale([copy.head], colW, 5);
+  const subS = captionScale(copy.sub, colW, 3);
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges">
     ${background(W, H)}
     ${vineCorners(W, H, 170)}
     <image x="90" y="${H - mH - 40}" width="${mH}" height="${mH}" href="${mUri}"/>
     ${nestedSvg(WORDMARK, colX, 96, colW, Math.round(colW / 4))}
-    ${captionBlock(['TEK TUSLA ZIPLA!'], colCx, 270, capS, [C.gold]).svg}
-    ${captionBlock(['YAVRU PANTER PANTHO ILE'], colCx, 330, subS, [C.text]).svg}
-    ${captionBlock(['ZIRVEYE TIRMAN'], colCx, 362, subS, [C.dim]).svg}
+    ${captionBlock([copy.head], colCx, 270, capS, [C.gold]).svg}
+    ${captionBlock([copy.sub[0]], colCx, 330, subS, [C.text]).svg}
+    ${captionBlock([copy.sub[1]], colCx, 330 + 11 * subS, subS, [C.dim]).svg}
   </svg>`;
 
-  const outDir = resolve(ROOT, 'store/play');
+  const rel = `store/play/${lang}`;
+  const outDir = resolve(ROOT, rel);
   mkdirSync(outDir, { recursive: true });
   await sharp(Buffer.from(svg)).png().toFile(resolve(outDir, `feature-${W}x${H}.png`));
-  return `store/play/feature-${W}x${H}.png`;
+  return `${rel}/feature-${W}x${H}.png`;
 }
 
 /* ---------- Main ---------- */
@@ -382,13 +392,13 @@ async function main() {
   mkdirSync(RAW_DIR, { recursive: true });
 
   const made = [];
-  made.push(await makeFeature());     // language-neutral, one copy
-
   const present = LANGS.filter((l) => rawsFor(l).length > 0);
+  for (const lang of present) made.push(await makeFeature(lang));
 
   if (present.length === 0) {
     console.log('store/raw/<dil>/ bos — sablon (placeholder) gorseller uretiliyor.');
     console.log(`Gercek goruntuleri store/raw/tr/ veya store/raw/en/ icine at.`);
+    made.push(await makeFeature('tr'));
     for (const size of SHOT_SIZES) made.push(await makeShot(size, 0, null, CAPTIONS.tr[0], 'tr'));
   } else {
     for (const lang of present) {
