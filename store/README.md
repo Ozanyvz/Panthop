@@ -36,7 +36,7 @@ karakter yok, tr.json kuralıyla aynı).
 
 | Dosya | Boyut | Nerede kullanılır |
 |---|---|---|
-| `play/feature-1024x500.png` | 1024×500 | Play Console → Öne çıkan görsel (zorunlu) |
+| `play/<dil>/feature-1024x500.png` | 1024×500 | Play Console → Öne çıkan görsel (zorunlu, dil başına) |
 | `play/<dil>/NN-phone-1080x1920.png` | 1080×1920 | Play telefon ekran görüntüleri (en az 2, en fazla 8) |
 | `ios/<dil>/NN-iphone69-1290x2796.png` | 1290×2796 | App Store 6.9" iPhone (zorunlu boyut) |
 | `ios/<dil>/NN-iphone65-1242x2688.png` | 1242×2688 | App Store 6.5" iPhone (eski cihaz listesi) |

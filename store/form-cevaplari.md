@@ -85,7 +85,7 @@ Beklenen sonuç: PEGI 3 / ESRB Everyone civarı.
 | Ücret | Ücretsiz |
 
 Metinler: [listing-tr.md](listing-tr.md) · [listing-en.md](listing-en.md)
-Görseller: `store/play/feature-1024x500.png`, `store/play/tr/`, `store/play/en/`,
+Görseller: `store/play/<dil>/` (öne çıkan görsel + 6 telefon karesi),
 ikon `assets/icons/icon-512.png`
 
 ---

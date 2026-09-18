@@ -185,7 +185,7 @@ içinde yeniden üretiliyor (üretilenler `.gitignore`'da).
 
 | Çıktı | Nerede |
 |---|---|
-| Play öne çıkan görsel | `store/play/feature-1024x500.png` |
+| Play öne çıkan görsel | `store/play/tr/feature-1024x500.png`, `store/play/en/...` |
 | Play telefon (6'şar) | `store/play/tr/`, `store/play/en/` |
 | App Store (3 boyut × 6) | `store/ios/tr/`, `store/ios/en/` |
 | Uygulama ikonu 512 | `assets/icons/icon-512.png` |
