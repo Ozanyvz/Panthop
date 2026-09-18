@@ -74,6 +74,11 @@ const TRIM_BOTTOM = 0.065;
 /* Store screenshot sizes. */
 const SHOT_SIZES = [
   { dir: 'store/play', tag: 'phone', w: 1080, h: 1920 },
+  /* Play asks for tablet shots at a 16:9 or 9:16 ratio — not the phone's own
+     aspect — so these are exact 9:16. The 10" slot also has a 1080px minimum
+     edge, which is why it is the larger of the two. */
+  { dir: 'store/play', tag: 'tablet7', w: 1080, h: 1920 },
+  { dir: 'store/play', tag: 'tablet10', w: 1440, h: 2560 },
   { dir: 'store/ios', tag: 'iphone69', w: 1290, h: 2796 },
   { dir: 'store/ios', tag: 'iphone65', w: 1242, h: 2688 },
   { dir: 'store/ios', tag: 'ipad13', w: 2048, h: 2732 },

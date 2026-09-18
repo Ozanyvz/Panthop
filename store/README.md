@@ -38,6 +38,8 @@ karakter yok, tr.json kuralıyla aynı).
 |---|---|---|
 | `play/<dil>/feature-1024x500.png` | 1024×500 | Play Console → Öne çıkan görsel (zorunlu, dil başına) |
 | `play/<dil>/NN-phone-1080x1920.png` | 1080×1920 | Play telefon ekran görüntüleri (en az 2, en fazla 8) |
+| `play/<dil>/NN-tablet7-1080x1920.png` | 1080×1920 | Play 7" tablet (9:16 zorunlu) |
+| `play/<dil>/NN-tablet10-1440x2560.png` | 1440×2560 | Play 10" tablet (9:16, kenar ≥1080) |
 | `ios/<dil>/NN-iphone69-1290x2796.png` | 1290×2796 | App Store 6.9" iPhone (zorunlu boyut) |
 | `ios/<dil>/NN-iphone65-1242x2688.png` | 1242×2688 | App Store 6.5" iPhone (eski cihaz listesi) |
 | `ios/<dil>/NN-ipad13-2048x2732.png` | 2048×2732 | App Store 13" iPad (iPad desteği açıksa zorunlu) |
