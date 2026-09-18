@@ -83,7 +83,7 @@ export const UPGRADES = [
     icon: iconHTML('clawhone'),
     currency: 'leaf',
     maxLevel: 5,
-    costs: [4, 4, 4, 4, 4],   // flat leaf price — each level buys another +20% chance
+    costs: [2, 2, 4, 4, 4],   // each level buys another +20% chance
     requires: 'sprint',
     group: 'sprint',
   },
@@ -95,7 +95,7 @@ export const UPGRADES = [
     icon: iconHTML('focus'),
     currency: 'leaf',
     maxLevel: 3,
-    costs: [4, 6, 8],
+    costs: [2, 4, 6],
     requires: 'sprint',
     group: 'sprint',
     defaultEffect: true,   // level 0 has a real value (2s charge) → show it as "now"

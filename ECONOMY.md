@@ -2,7 +2,7 @@
 
 > Dengeleme referansı. **Ekonomiye dokunan her değişiklikte bu dosya güncellenir.**
 > Kaynak: `js/upgrades.js` · `js/achievements.js` · `js/storage.js` · `js/game.js`
-> Son güncelleme: **2026-07-13**
+> Son güncelleme: **2026-09-18**
 
 ## 1. Para birimleri bir bakışta
 
@@ -37,14 +37,14 @@ Skor kaynakları: normal zıplama **+1** · sprint zıplaması şans tutarsa **+
 | Kabuk Çarpanı | 80 · 220 · 560 · 1400 | 2260 | kabuk ×1.25 → ×1.5 → ×1.75 → ×2.0 |
 | Bilenmiş Pençe | 150 · 300 · 800 · 2000 | 3250 | koşu başına 2 → 5 → 8 → 10 pençe; pençe kuş engeline değince harcanır, zıplamayla kaybolmaz |
 
-### 🍃 Yaprak sekmesi (Sprint ağacı) — toplam **49**
+### 🍃 Yaprak sekmesi (Sprint ağacı) — toplam **39**
 
 | Gelişim | Kademe fiyatları | Toplam | Etki |
 |---|---|---|---|
 | Sprint (kilit) | 1 | 1 | bas-tut sprint açılır (2 sn şarj) |
 | Sprint Primi | 2 × 5 | 10 | sprint zıplaması +2 skor şansı: %20 → 40 → 60 → 80 → 100 |
-| Pençe Bileme | 4 × 5 | 20 | sprint şarjı her dolduğunda %20 → 40 → 60 → 80 → 100 şansla +1 pençe (Bilenmiş Pençe stoğuna eklenir, harcanana kadar kalır) |
-| Odaklanma | 4 · 6 · 8 | 18 | sprint şarj süresi 2.0 → 1.5 → 1.0 → 0.5 sn |
+| Pençe Bileme | 2 · 2 · 4 · 4 · 4 | 16 | sprint şarjı her dolduğunda %20 → 40 → 60 → 80 → 100 şansla +1 pençe (Bilenmiş Pençe stoğuna eklenir, harcanana kadar kalır) |
+| Odaklanma | 2 · 4 · 6 | 12 | sprint şarj süresi 2.0 → 1.5 → 1.0 → 0.5 sn |
 
 ### 🪶 Tüy sekmesi — toplam **675**
 
@@ -79,18 +79,20 @@ Kaçış **veya** Bilenmiş Pençe **max** olduğunda gelişim ekranında açıl
 
 | Birim | Toplam gider | Başarım geliri | Oynanış geliri | Durum |
 |---|---|---|---|---|
-| 🍃 Yaprak | 49 | 57 | — | Artı 8; ağacın tamamı ancak **1000 milestone** ile bitiyor (750'de kümülatif 43 < 49) |
+| 🍃 Yaprak | 39 | 57 | — | Artı 18; ağaç artık **750 milestone** ile bitiyor (kümülatif 43 ≥ 39); 100 skorda (7🍃) ağacın **dört hattı da** açılabiliyor — eskiden üçü |
 | 🪵 Kabuk | 7110 | 480 | koşu başına `skor×çarpan` (+reklam 2x) | Ör. 100 skorluk koşu + reklam ≈ 200-400 kabuk → ağacı bitirmek kabaca 20-35 iyi koşu |
 | 🪶 Tüy | 675 (+∞ kuyusu) | 26 | kuş başına %20-75 şans | Dar boğaz yumuşadı (eski 1250 → 675; Kaçış artık 25 tüyle başlıyor); geç oyunda Sonsuz sekmesi sınırsız tüy/kabuk yutucusu |
 
 Gözlemler / dengeleme adayları:
 - [ ] Tüy ekonomisi çok yavaş: kuş kesimi tamamen pençe stoğuna bağlı (koşu başı 2-10 + şansla bilenenler); eski "sprint bedava parçalar" yolu kalktı. Tüy fiyatlarını düşürmek ya da parçalama başarımlarının tüy ödüllerini büyütmek düşünülebilir.
 - [ ] Engel parçalama artık +1 skor vermiyor (eski Sprint Parçalama etkisiyle birlikte kalktı) — parçalamanın skor ödülü istenirse pençe harcamasına eklenebilir.
-- [ ] Yaprak ağacı 49'a çıktı; tamamı artık 1000 milestone istiyor. Pençe Bileme kademe fiyatı (4🍃) benim seçimim — düşürülebilir ya da milestone ödülleri artırılabilir.
-- [ ] Yaprak ağacının bitişi 750 skora bağlı — erken milestone ödüllerini şişirmek (ör. 1/2/4 → 2/3/5) bitişi 500'e çeker.
+- [x] Yaprak ağacı 49 → 39 (2026-09-18): erken kademeler ucuzladı, ağacın bitişi 1000 → 750 milestone.
+- [ ] Yaprak ağacının bitişi hâlâ 750 skora bağlı — erken milestone ödüllerini şişirmek (ör. 1/2/4 → 2/3/5) bitişi 500'e çeker.
 - [ ] Zorluk rampası artık 200 skorda tavan yapıyor; milestone eşikleri (25…1000) bu eğriye göre yeniden gözden geçirilebilir.
 
 ## 6. Değişiklik günlüğü
+
+- **2026-09-18** — **Erken yaprak fiyatları düştü.** Sprint ağacında 4🍃 ile başlayan iki hat ucuzladı: **Pençe Bileme** 4×5 → **2·2·4·4·4** (20 → 16) ve **Odaklanma** 4·6·8 → **2·4·6** (18 → 12). Yaprak sekmesi toplamı 49 → **39**. Amaç: ilk kilometre taşlarından gelen az yaprakla (25→1, 50→+2, 100→+4) oyuncu Sprint'ten sonraki ikinci/üçüncü gelişimi daha erken alabilsin. Ağacın tamamı artık 1000 yerine **750 skor** milestone'uyla bitiyor. Mekanik/etki değişmedi, sadece fiyat.
 
 - **2026-08-20** — **Gizli başarım: Müzisyen.** Tek bir koşuda ard arda **5 zıplama aralığı** aynı ritmi tutturunca (yani 6 zıplama, aralıklar birbirinden en fazla ±5 salise sapabilir) açılır. **Ödülsüz** — ekonomiye para girişi yok. Başarımlar ekranında yeni "SIRLAR" grubunda duruyor; açılana kadar adı/açıklaması "???" olarak gizli, sadece "?" karesi görünür. Koşu sırasında ses + titreşimle, koşu sonunda rozetle bildirilir. Sayaçlardan türetilemediği için açılışı `wj_secrets_v1` altında saklanıyor.
 
