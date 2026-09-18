@@ -77,7 +77,7 @@ Beklenen sonuç: PEGI 3 / ESRB Everyone civarı.
 ### Mağaza kaydı
 | Alan | Değer |
 |---|---|
-| Uygulama adı | Panthop: Tek Tuşla Zıpla |
+| Uygulama adı | en-US: `Panthop: One Tap Jump` · tr-TR: `Panthop: Tıkla ve Zıpla` |
 | Kategori | Oyunlar → Arcade |
 | Gizlilik politikası | https://aldros.site/panthop/gizlilik |
 | **Geliştirici web sitesi** | https://aldros.site ← app-ads.txt için birebir bu |
@@ -136,5 +136,8 @@ Play'deki IARC cevaplarının aynısı. Beklenen: **4+ veya 9+**
   politikasıyla çelişir ve AdMob tarafında ek yapılandırma ister.
 - **`FOREGROUND_SERVICE` izni** manifestte görünüyor ama oyun kodu kullanmıyor,
   Google Play Services'ten geliyor. Play sorarsa kaynağı budur.
-- **Test reklam kimlikleri** hâlâ kodda. Production'a göndermeden önce gerçek
-  AdMob ID'leri girilmeli (bkz. [RELEASE.md](../RELEASE.md) 3. bölüm).
+- **iOS hâlâ test reklam biriminde.** Android gerçek kimliklere geçti; iOS için
+  AdMob'da ayrı bir uygulama oluşturulup kimlikleri girilmeden App Store
+  derlemesi alınmamalı (bkz. [RELEASE.md](../RELEASE.md) 6a bölümü).
+- **Gizlilik politikası URL'si dile göre değişir:** en-US girişinde
+  `/panthop/privacy`, tr-TR girişinde `/panthop/gizlilik`.
