@@ -330,7 +330,7 @@ export function recordRunLog({ startedAt, duration, jumps }) {
    The stores require the policy to be shown and accepted before anything that
    collects data runs, so main.js gates its boot (and initAds) on this. Raise
    PRIVACY_VERSION whenever PRIVACY.md changes materially. */
-export const PRIVACY_VERSION = 1;
+export const PRIVACY_VERSION = 2;   // 2: 18 Eyl 2026 — TCF onay ekranı / hassas konum açıklaması
 
 export function hasAcceptedPrivacy() {
   const v = parseInt(localStorage.getItem(KEY_PRIVACY) || '0', 10);

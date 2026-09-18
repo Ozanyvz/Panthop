@@ -27,7 +27,7 @@
 **Uygulama:** Panthop
 **Geliştirici:** Aldros
 **İletişim:** ozanyvz92@yandex.com
-**Son güncelleme:** 12 Eylül 2026
+**Son güncelleme:** 18 Eylül 2026
 
 ## 1. Özet
 
@@ -71,11 +71,21 @@ Bu veriler Google tarafından, kendi gizlilik politikası kapsamında işlenir:
 https://policies.google.com/privacy
 Google'ın reklam ortakları listesi: https://business.safety.google/adspartners
 
+**Avrupa'daki onay ekranı hakkında.** Avrupa Ekonomik Alanı, Birleşik Krallık ve
+İsviçre'deki oyunculara ilk açılışta gösterilen onay ekranı Google'ın IAB TCF
+çerçevesini kullanır ve reklam ortaklarının **talep edebileceği** tüm amaçları
+listeler; bu listede "hassas konum verisi" de geçer. Panthop cihazınızdan konum
+izni **istemez** — uygulamanın böyle bir izni hiç yoktur — dolayısıyla onay
+ekranında bu amaca izin verseniz bile Panthop üzerinden GPS düzeyinde konum
+paylaşılmaz. Reklamlar için kullanılan konum, yukarıda yazdığı gibi IP
+adresinden türetilen ülke/şehir düzeyindedir (bkz. 5. madde).
+
 **Kişiselleştirilmiş reklamları kapatmak için:**
 - Android: Ayarlar → Google → Reklamlar → "Reklam kimliğini sil"
 - iOS: Ayarlar → Gizlilik ve Güvenlik → İzleme → uygulama izinlerini kapatın
 - Avrupa Ekonomik Alanı, Birleşik Krallık ve İsviçre'deki oyunculara ilk
   açılışta Google'ın onay ekranı gösterilir; tercihinizi orada belirlersiniz.
+  Sonradan değiştirmek için: **Ayarlar → Gizlilik → Reklam Tercihleri**.
 
 ## 4. Oyun servisleri (Google Play Games / Apple Game Center)
 
@@ -96,7 +106,8 @@ Uygulama yalnızca şu izinleri kullanır:
 | Titreşim | Zıplama/çarpışma geri bildirimi (Ayarlar'dan kapatılabilir) |
 
 Kamera, mikrofon, rehber, dosyalar, hassas konum veya SMS erişimi **istemiyoruz
-ve kullanmıyoruz**.
+ve kullanmıyoruz**. Avrupa'daki reklam onay ekranında geçen "hassas konum"
+amaçının bunu değiştirmediğini 3. maddede açıkladık.
 
 ## 6. Çocuklar
 
@@ -137,7 +148,7 @@ Sorularınız için: **ozanyvz92@yandex.com**
 **App:** Panthop
 **Developer:** Aldros
 **Contact:** ozanyvz92@yandex.com
-**Last updated:** 12 September 2026
+**Last updated:** 18 September 2026
 
 ## 1. Summary
 
@@ -178,11 +189,21 @@ Google processes this data under its own privacy policy:
 https://policies.google.com/privacy
 Google's advertising partners: https://business.safety.google/adspartners
 
+**About the consent screen in Europe.** Players in the EEA, the UK and
+Switzerland are shown Google's consent screen on first launch. It uses the IAB
+TCF framework and lists every purpose an advertising partner **may** ask for,
+including "precise geolocation data". Panthop never requests location permission
+from your device — the app holds no such permission — so even if you allow that
+purpose on the consent screen, no GPS-level location is shared through Panthop.
+The location used for ads is the country/city estimate derived from your IP
+address, as listed above (see section 5).
+
 **To turn off personalised ads:**
 - Android: Settings → Google → Ads → "Delete advertising ID"
 - iOS: Settings → Privacy & Security → Tracking → turn off app permissions
 - Players in the EEA, UK and Switzerland are shown Google's consent screen on
-  first launch and set their preference there.
+  first launch and set their preference there. To change it later:
+  **Settings → Privacy → Ad Preferences**.
 
 ## 4. Game services (Google Play Games / Apple Game Center)
 
@@ -203,7 +224,8 @@ The app uses only these permissions:
 | Vibration | Jump/collision feedback (can be turned off in Settings) |
 
 We do **not** request or use access to your camera, microphone, contacts, files,
-precise location or SMS.
+precise location or SMS. Section 3 explains why the "precise geolocation"
+purpose on the European consent screen does not change this.
 
 ## 6. Children
 
