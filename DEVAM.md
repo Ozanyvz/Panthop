@@ -19,22 +19,30 @@ mini'de yapılacak işler.
 
 ## HEMEN SIRADAKİ ADIM
 
-**Yeni AAB derle ve kapalı teste yükle.** 14 günlük sayaç testerlar daveti kabul
-edene kadar başlamıyor, yani takvimi belirleyen tek şey bu.
+**AAB hazır ve doğrulandı — kapalı teste yüklenecek.**
 
-Derleme zaten gerekiyordu (dahili teste yüklenen AAB eski Capacitor ikonunu
-taşıyordu, yeni panter ikonu ondan sonra yapıldı). Artık iki değişiklik daha
-pakete girmeli: **yaprak fiyat indirimi** ve **`PRIVACY_VERSION 2`**.
+```
+android\app\build\outputs\bundle\release\app-release.aab
+```
+
+31,3 MB · `versionCode 2` / `versionName 1.0` · imzalı. Paketin içinden
+doğrulandı: yeni panter ikonu (üretilen dosyayla piksel piksel aynı), yeni yaprak
+fiyatları, `PRIVACY_VERSION 2`, gerçek AdMob kimlikleri.
+
+Play Console → Kapalı test → Yeni sürüm oluştur → bu dosyayı yükle. Sürüm notları
+boş bırakılamıyor, mağaza girişindeki her dil için ayrı isteniyor.
+
+14 günlük sayacı başlatan şey **testerların katılım linkini kabul etmesi**;
+listeye eklemek tek başına yetmiyor.
+
+Yeniden derlemek gerekirse:
 
 ```bash
 npm run build
 npx cap sync android
-node tools/make-app-icon.mjs          # cap sync ikonları eskiye döndürür — ZORUNLU
-# android/app/build.gradle -> versionCode 2
+node tools/make-app-icon.mjs          # cap sync sonrası — ikonları garantiye alır
 cd android && ./gradlew.bat :app:bundleRelease
 ```
-
-`versionCode` hâlâ `1`; Play aynı numarayla ikinci paket kabul etmiyor.
 
 Ayrıca göndermeden önce: **PC'de Google Play Games form faktörü hâlâ açık.**
 Test edilmemiş bir platform; Gelişmiş ayarlar → Form faktörleri'nden kapatılması
@@ -105,13 +113,18 @@ Kayıt olarak duruyor, hepsi düzeltildi:
 
 ### iOS — kodda açık yok, Mac mini'de yapılacaklar
 - [ ] Apple Developer üyeliği
-- [ ] iOS ikon seti (`make-app-icon.mjs` yalnızca Android üretiyor;
-      Mac'te `npm run cap:assets:ios`, sonra ikon scriptini tekrar çalıştır)
+- [x] ~~iOS ikon seti~~ — `make-app-icon.mjs` artık iOS ikonunu da yazıyor
+      (1024, alfasız). Mac'te `npm run cap:assets:ios` çalıştırırsan açılış
+      ekranları için işe yarar ama **sonrasında ikon scriptini tekrar çalıştır**
 - [ ] `npm run ios:setup` → Xcode Team + Game Center capability
 - [ ] App Store Connect kaydı
 
 ### İsteğe bağlı
-- [ ] Play Games 32 başarım → `LOCAL_TO_PLAY` ([store/basarimlar.md](store/basarimlar.md))
+- [ ] Play Games 32 başarım → `LOCAL_TO_PLAY` ([store/basarimlar.md](store/basarimlar.md)).
+      İkonlar hazır: `npm run store:achievements` → `store/achievement-icons/`
+      (32 dosya, 512×512, alfasız; eşleşme listesi o klasördeki INDEX.md).
+      Games Services kurulumunda **Play'in imzalama sertifikası SHA-1'i** gerekiyor,
+      upload key'inki değil — ikisi de eklenmeli.
 - [ ] Öne çıkan görseldeki maskot hâlâ eski çerçeveli çizim; yeni ikonla tutarsız
 
 ---
@@ -121,6 +134,19 @@ Kayıt olarak duruyor, hepsi düzeltildi:
 **`npm run cap:assets` ikonları eskiye döndürür.** O araç açılış ekranlarını da
 üretiyor, bu yüzden çalıştırılması gerekebilir — ama sonrasında **mutlaka**
 `node tools/make-app-icon.mjs` çalıştır.
+
+**iOS ikonu 10 Temmuz'a kadar eski çerçeveli maskotu taşıyordu** (19 Eylülde
+düzeltildi). `assets/icon-only.png` **alfa kanalı taşıyor**; capacitor-assets onu
+kaynak alırsa çıkan ikon saydam olur ve **App Store Connect reddeder**. Bu yüzden
+`make-app-icon.mjs` iOS ikonunu doğrudan, düzleştirilmiş olarak yazıyor.
+
+**Açılış ekranları (splash) hâlâ eski çerçeveli pixel-art çizim** — hem Android
+hem iOS. Oyunun kendisi pixel-art olduğu için kasıtlı olabilir; değiştirilecekse
+`assets/splash.png` + `splash-dark.png` yenilenip `cap:assets` çalıştırılmalı.
+
+**sharp tek pipeline'da işlemleri yeniden sıralıyor.** `resize` + `extract` +
+`resize` zincirini yazıldığı sırada çalıştırmıyor; kırpılan bölge yanlış piksellere
+düşüyor ve çıktı sessizce boş geliyor. Her adım arasında `toBuffer()` al.
 
 **`ios/App/App/Info.plist` depoda TAKİPLİ** — `ios/App/App/public/` gitignore'da
 olduğu için tüm iOS klasörü öyle sanılıyor. Plist'teki `GADApplicationIdentifier`
@@ -163,7 +189,7 @@ Hafızada Pro abone yazıyor ama API reddediyor; kullanıcının kontrol etmesi 
 | | |
 |---|---|
 | Paket adı | `com.simpleonetap.panthop` |
-| Sürüm | `versionCode 1` / `versionName 1.0` — **kapalı test için 2 yapılacak** |
+| Sürüm | `versionCode 2` / `versionName 1.0` |
 | SDK | minSdk 24, compile/target 36 |
 | Keystore | `C:\Users\only-\panthop-release.jks` (depo dışı, USB yedeği var) |
 | Keystore şifreleri | `android/keystore.properties` (gitignore'da) |
