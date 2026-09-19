@@ -160,6 +160,33 @@ async function main() {
     Math.round(512 * 0.47 - HEAD.cy * sScale), 512)])
     .png().toFile(resolve(ROOT, 'assets/icons/icon-512.png'));
   console.log('assets/icons/icon-512.png (magaza ikonu)');
+
+  /* iOS app icon, written directly instead of left to `capacitor-assets`.
+     Two reasons, both learned the hard way:
+
+       1. That tool only runs on the Mac, so until someone remembers to run it
+          the checked-in artwork stays stale — which is exactly how a build
+          once shipped with the wrong icon.
+       2. It would source assets/icon-only.png, which carries an alpha channel.
+          App Store Connect rejects an app icon with any transparency, and the
+          rejection arrives after upload, not before.
+
+     So: the full composition, flattened onto the gradient, 1024, no alpha. */
+  const iosIconDir = resolve(ROOT, 'ios/App/App/Assets.xcassets/AppIcon.appiconset');
+  mkdirSync(iosIconDir, { recursive: true });
+  {
+    const S = 1024;
+    const sc = (0.80 * S) / HEAD.w;
+    const w2 = Math.round(W * sc), h2 = Math.round(H * sc);
+    const img = await sharp(cub).resize(w2, h2, { kernel: 'lanczos3' }).toBuffer();
+    await sharp(gradientSvg(S)).png()
+      .composite([await clipped(img, w2, h2,
+        Math.round(S / 2 - HEAD.cx * sc),
+        Math.round(S * 0.47 - HEAD.cy * sc), S)])
+      .removeAlpha()
+      .png().toFile(resolve(iosIconDir, 'AppIcon-512@2x.png'));
+  }
+  console.log('ios AppIcon-512@2x.png 1024px (alfa kanali yok)');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
