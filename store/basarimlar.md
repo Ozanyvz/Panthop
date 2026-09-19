@@ -10,6 +10,11 @@ sonra platformun verdigi ID'yi ilgili haritaya yazacagiz:
 
 > Bu dosya `node tools/dump-achievements.mjs` ile uretildi; basarim tanimlari
 > degisirse yeniden uret.
+>
+> **Ikonlar:** her iki konsol da basarim basina 512x512 PNG istiyor.
+> `npm run store:achievements` bunlari `store/achievement-icons/` altina
+> yazar -- 32 dosya, grup basina bir gorsel, asagidaki tabloyla ayni sirada
+> numaralanmis. Eslesme listesi o klasordeki INDEX.md'de.
 
 | # | Yerel ID | Grup | Ad (TR) | Aciklama (TR) | Ad (EN) | Odul |
 |---|---|---|---|---|---|---|

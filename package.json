@@ -9,6 +9,7 @@
     "icons": "node tools/make-icons.mjs",
     "icons:svg": "node tools/gen-icons.mjs",
     "store:gfx": "node tools/make-store-graphics.mjs",
+    "store:achievements": "node tools/make-achievement-icons.mjs",
     "build": "node tools/gen-icons.mjs && node tools/build.mjs",
     "cap:add:android": "npm run build && cap add android",
     "cap:add:ios": "npm run build && cap add ios",

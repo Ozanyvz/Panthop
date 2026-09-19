@@ -30,3 +30,7 @@ android/keystore.properties
 # yeniden uretiliyor, ~59 MB ikili dosyayi gecmiste tutmanin anlami yok.
 store/play/
 store/ios/
+
+# Basarim ikonlari: uretilen ciktilar (node tools/make-achievement-icons.mjs).
+# Kaynak assets/icons/game/*.svg, o commit ediliyor.
+store/achievement-icons/
