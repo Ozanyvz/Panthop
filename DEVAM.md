@@ -1,4 +1,4 @@
-# Devam notu — 18 Eylül 2026
+# Devam notu — 19 Eylül 2026
 
 Yayın sürecinin ortasında oturum değiştirmek için yazıldı. Yeni bir sohbete
 başlarken bu dosyayı okut; nerede kaldığımızı, hangi kararların verildiğini ve
@@ -10,27 +10,31 @@ Adım adım yayın rehberi ayrı: [RELEASE.md](RELEASE.md). Burası "şu an nere
 
 ## Tek cümleyle
 
-Android tarafı yayına hazır ve imzalı; Play Console'da kurulum tamamlandı,
-sıra **kapalı testi başlatmakta** (12 test kullanıcısı × 14 gün zorunlu).
-iOS'a hiç başlanmadı.
+Android yayına hazır ve imzalı, **AdMob tamamen bitti** (Android + iOS kimlikleri,
+GDPR ve ABD mesajları yayında); sıra **kapalı testi başlatmakta** (12 test
+kullanıcısı × 14 gün zorunlu). iOS'ta kodda açık kalan bir şey yok, hepsi Mac
+mini'de yapılacak işler.
 
 ---
 
 ## HEMEN SIRADAKİ ADIM
 
-Kapalı test sürümü oluşturulacak. Ama verilmesi gereken bir karar var:
+**Yeni AAB derle ve kapalı teste yükle.** 14 günlük sayaç testerlar daveti kabul
+edene kadar başlamıyor, yani takvimi belirleyen tek şey bu.
 
-**Dahili teste yüklenen AAB eski Capacitor ikonunu taşıyordu.** Yeni panter
-ikonu ondan sonra yapıldı. Kapalı teste yeni ikonlu sürümü koymak istiyoruz
-(12 kişi 14 gün boyunca o sürümü görecek), ama `versionCode` hâlâ `1` ve Play
-aynı numarayla ikinci bir paket kabul etmiyor.
+Derleme zaten gerekiyordu (dahili teste yüklenen AAB eski Capacitor ikonunu
+taşıyordu, yeni panter ikonu ondan sonra yapıldı). Artık iki değişiklik daha
+pakete girmeli: **yaprak fiyat indirimi** ve **`PRIVACY_VERSION 2`**.
 
-Yapılacak:
-1. `android/app/build.gradle` → `versionCode 2`
-2. `cd android && ./gradlew.bat :app:bundleRelease`
-3. Çıkan AAB'yi kapalı teste yükle
+```bash
+npm run build
+npx cap sync android
+node tools/make-app-icon.mjs          # cap sync ikonları eskiye döndürür — ZORUNLU
+# android/app/build.gradle -> versionCode 2
+cd android && ./gradlew.bat :app:bundleRelease
+```
 
-Kullanıcı bunu onayladıysa yap; onaylamadıysa kitaplıktaki eski paketi kullanır.
+`versionCode` hâlâ `1`; Play aynı numarayla ikinci paket kabul etmiyor.
 
 Ayrıca göndermeden önce: **PC'de Google Play Games form faktörü hâlâ açık.**
 Test edilmemiş bir platform; Gelişmiş ayarlar → Form faktörleri'nden kapatılması
@@ -38,39 +42,50 @@ Test edilmemiş bir platform; Gelişmiş ayarlar → Form faktörleri'nden kapat
 
 ---
 
-## Bu oturumda ne yapıldı
+## 19 Eylül oturumunda ne yapıldı
 
-19 commit. Öne çıkanlar:
+### Denge
+- **Erken yaprak gelişimleri ucuzladı** (`c550c39`): Pençe Bileme 4×5 → 2·2·4·4·4,
+  Odaklanma 4·6·8 → 2·4·6. Yaprak ağacı toplamı 49 → **39**. Artık 100 skorda
+  (7🍃) ağacın dört hattı da açılabiliyor, eskiden üçü açılabiliyordu; ağacın
+  tamamı 1000 yerine **750 skor** milestone'uyla bitiyor. Mekanik değişmedi.
+  Ayrıntı: [ECONOMY.md](ECONOMY.md) değişiklik günlüğü.
 
-### Bulunan ve düzeltilen gerçek hatalar
+### Gizlilik
+- **AdMob GDPR mesajı ile politika çelişiyordu** (`b7e28cb`): onay ekranı IAB TCF
+  çerçevesini kullanıyor ve ortakların talep edebileceği "hassas konum verisi"
+  amacını listeliyor, politikamız ise yalnızca IP'den türetilen ülke/şehir
+  düzeyinden bahsediyordu. 3. maddeye açıklayıcı paragraf, 5. maddeye çapraz
+  referans eklendi. **`PRIVACY_VERSION` 1 → 2** (oyuncular onayı bir kez daha
+  verecek — şu an kimse kabul etmediği için bedava).
+- Yayınlanan sayfalar güncellendi ve **canlıda doğrulandı**: Aldros-art `f952185`.
+
+### AdMob — bitti
+- **GDPR (Avrupa tüzükleri) mesajı** oluşturuldu ve yayınlandı. "İzin vermeyin"
+  düğmesi tüm ülkelerde açık.
+- **ABD eyalet yönetmelikleri mesajı** oluşturuldu. Bu mesaj otomatik açılmaz;
+  giriş noktası oyundaki **Ayarlar → Gizlilik → Reklam Tercihleri** butonu
+  ([index.html](index.html) `ad-privacy-btn` → `showPrivacyOptionsForm()`).
+  [main.js](js/main.js) buton görünürlüğünü `initAds()` bittikten sonra
+  hesaplıyor — sıra doğru, dokunma.
+- **iOS gerçek kimliklere geçti**: App ID `…~3621532807`, Ödüllü `…/8205801765`.
+  Google'ın test kimliğinden depoda iz kalmadı.
+
+---
+
+## Önceki oturumda (18 Eylül) bulunan gerçek hatalar
+
+Kayıt olarak duruyor, hepsi düzeltildi:
 
 - **Android derlemesi tamamen kırıktı.** `minSdkVersion 23`, Play Games
-  kütüphanesinin istediği 24'ün altındaydı; manifest merger hata verip APK/AAB
-  üretimini durduruyordu. targetSdk'den bağımsız, önceden var olan bir hataydı.
-  → minSdk 24, compileSdk/targetSdk 36. Doğrulandı: `bundleRelease` BUILD SUCCESSFUL.
-- **Three.js bir CDN'den (unpkg) yükleniyordu.** İnternetsiz oyun hiç açılmıyordu,
-  iOS'ta her açılışta ağ gerekiyordu (WKWebView `capacitor://` altında Service
-  Worker çalıştırmaz), App Store 2.5.2 riski vardı ve "hiçbir veri gönderilmiyor"
-  diyen gizlilik metniyle çelişiyordu. → `vendor/three/` altına yerelleştirildi.
-- **Ödüllü reklam erken kapatmada sonsuza dek asılı kalıyordu.** Eklenti
-  `showRewardVideoAd()` çağrısını yalnızca ödül callback'inden resolve ediyor;
-  oyuncu reklamı kapatınca promise hiç sonuçlanmıyordu ve "KABUK X2" butonu
-  donuyordu. → Akış artık `Dismissed`/`FailedToShow` olaylarıyla sonlanıyor.
-- **UMP onayı ve iOS ATT istemi hiç çağrılmıyordu.** Info.plist'te ATT metni
-  vardı ama istem yoktu (5.1.2 reddi riski). → `ensureConsent()` eklendi.
-- **Uygulama ikonu hâlâ Capacitor'ın kurulum şablonuydu** (mor-pembe "A").
-  → Yeni tasarım, aşağıda.
-- **Mağaza görsellerinde başlıklar yanlış eşleşebiliyordu** (dosya sırasına göre
-  eşleşiyordu, numarasına göre değil) ve OS çubukları kırpılmıyordu.
-
-### Eklenenler
-
-- Gizlilik politikası: [PRIVACY.md](PRIVACY.md) kaynak metin, canlı sayfalar
-  `Aldros-art` deposunda, oyun içi tek seferlik onay ekranı, `app-ads.txt`
-- Release imzalama yapılandırması (`build.gradle` + gitignore'lu `keystore.properties`)
-- Mağaza görselleri: TR + EN, telefon + 7"/10" tablet + iOS, öne çıkan görsel
-- Mağaza metinleri TR + EN, form cevap föyü, 32 başarımın ID tablosu
-- Yeni uygulama ikonu + `tools/make-app-icon.mjs`
+  kütüphanesinin istediği 24'ün altındaydı. → minSdk 24, compile/targetSdk 36.
+- **Three.js bir CDN'den (unpkg) yükleniyordu.** İnternetsiz oyun açılmıyordu,
+  App Store 2.5.2 riski vardı, gizlilik metniyle çelişiyordu. → `vendor/three/`.
+- **Ödüllü reklam erken kapatmada sonsuza dek asılı kalıyordu.** Eklenti promise'i
+  yalnızca ödül callback'inden resolve ediyordu. → `Dismissed`/`FailedToShow`.
+- **UMP onayı ve iOS ATT istemi hiç çağrılmıyordu.** → `ensureConsent()`.
+- **Uygulama ikonu hâlâ Capacitor şablonuydu.** → yeni panter ikonu.
+- **Mağaza görsellerinde başlıklar yanlış eşleşebiliyordu.**
 
 ---
 
@@ -84,19 +99,15 @@ Test edilmemiş bir platform; Gelişmiş ayarlar → Form faktörleri'nden kapat
 - [ ] PC'de Play Games form faktörü kararı
 
 ### Kullanıcıda (AdMob)
-- [ ] **GDPR mesajı oluştur** (Gizlilik ve mesajlaşma → Avrupa düzenlemeleri).
-      Kod hazır ama mesaj yoksa Avrupa'da onay formu boş döner.
-- [ ] ABD eyalet düzenlemeleri mesajı
-- [ ] Yayından sonra AdMob uygulamasını Play kaydına bağla → `app-ads.txt` doğrulanır
-- [ ] **iOS uygulaması oluştur** → App ID + Rewarded Unit ID
+- [ ] **Yayından sonra** AdMob uygulamasını Play kaydına bağla → `app-ads.txt`
+      doğrulanır ve ana sayfadaki "Uygulama mağazasına bağlantı oluştur" görevi
+      kapanır. Uygulama canlı olmadan yapılamıyor.
 
-### iOS (hiç başlanmadı)
-Tam liste [RELEASE.md](RELEASE.md) 6a bölümünde. Özet:
-- [ ] AdMob iOS kimlikleri → `patch-ios-plist.sh` + `admob.js`
-      (**iOS hâlâ Google'ın TEST reklam biriminde**, kazanç getirmez)
+### iOS — kodda açık yok, Mac mini'de yapılacaklar
+- [ ] Apple Developer üyeliği
 - [ ] iOS ikon seti (`make-app-icon.mjs` yalnızca Android üretiyor;
-      Mac'te `npm run cap:assets:ios`)
-- [ ] Mac mini: `npm run ios:setup`, Xcode Team + Game Center capability
+      Mac'te `npm run cap:assets:ios`, sonra ikon scriptini tekrar çalıştır)
+- [ ] `npm run ios:setup` → Xcode Team + Game Center capability
 - [ ] App Store Connect kaydı
 
 ### İsteğe bağlı
@@ -111,16 +122,22 @@ Tam liste [RELEASE.md](RELEASE.md) 6a bölümünde. Özet:
 üretiyor, bu yüzden çalıştırılması gerekebilir — ama sonrasında **mutlaka**
 `node tools/make-app-icon.mjs` çalıştır.
 
+**`ios/App/App/Info.plist` depoda TAKİPLİ** — `ios/App/App/public/` gitignore'da
+olduğu için tüm iOS klasörü öyle sanılıyor. Plist'teki `GADApplicationIdentifier`
+elle güncellenmeli; `patch-ios-plist.sh` yalnızca Mac'te çalışıyor.
+
 **`capacitor-assets` adaptive katmanları yanlış boyutta üretiyor** (48dp yerine
 108dp olmalı) ve verdiğin foreground'u yeniden ölçekliyor. `make-app-icon.mjs`
 bu yüzden kaynakları doğrudan yazıyor.
 
 **Adaptive ikon XML'i katmanlara %16.7 inset uyguluyor**, yani çizim tam olarak
-görünen 72dp alanına oturuyor. Önizleme yaparken ekstra maske kırpması uygulama —
-`HEAD_FRACTION` doğrudan "kafa görünen ikonun ne kadarını kaplıyor" demek.
+görünen 72dp alanına oturuyor. Önizleme yaparken ekstra maske kırpması uygulama.
 
 **`npm start`'tan önce en az bir kez `npm run build` gerekiyor** — Three.js ve
 `@capacitor/core` artık `vendor/` altından servis ediliyor, o klasör üretiliyor.
+
+**Ekonomiye dokunan her değişiklikte [ECONOMY.md](ECONOMY.md) güncellenir.**
+Kullanıcının kalıcı isteği; dengeleme konuşmaları o dosya üzerinden yürüyor.
 
 **Mağaza görselleri `.gitignore`'da.** Yoksa `npm run store:gfx` ile yeniden üret;
 kaynak ham kareler `store/raw/<dil>/` altında commit'li.
@@ -129,7 +146,9 @@ kaynak ham kareler `store/raw/<dil>/` altında commit'li.
 birleştirip `toBuffer()` al, sonra ayrı bir pipeline'da küçült.
 
 **Gizlilik URL'si dile göre değişir:** en-US girişinde `/panthop/privacy`,
-tr-TR girişinde `/panthop/gizlilik`.
+tr-TR girişinde `/panthop/gizlilik`. Politika metnini değiştirirsen
+[PRIVACY.md](PRIVACY.md) başındaki üç adımlı yordamı izle (iki HTML sayfası +
+`PRIVACY_VERSION` + üç yerde tarih).
 
 **Play'de çocuk yaş grubu seçme** — gizlilik politikasıyla çelişir, Families
 politikasını tetikler.
@@ -144,7 +163,7 @@ Hafızada Pro abone yazıyor ama API reddediyor; kullanıcının kontrol etmesi 
 | | |
 |---|---|
 | Paket adı | `com.simpleonetap.panthop` |
-| Sürüm | `versionCode 1` / `versionName 1.0` |
+| Sürüm | `versionCode 1` / `versionName 1.0` — **kapalı test için 2 yapılacak** |
 | SDK | minSdk 24, compile/target 36 |
 | Keystore | `C:\Users\only-\panthop-release.jks` (depo dışı, USB yedeği var) |
 | Keystore şifreleri | `android/keystore.properties` (gitignore'da) |
@@ -152,7 +171,10 @@ Hafızada Pro abone yazıyor ama API reddediyor; kullanıcının kontrol etmesi 
 | AdMob yayıncı | `pub-6482116152023017` |
 | AdMob Android App ID | `ca-app-pub-6482116152023017~7362056597` |
 | AdMob Android Rewarded | `ca-app-pub-6482116152023017/3833875129` |
+| AdMob iOS App ID | `ca-app-pub-6482116152023017~3621532807` |
+| AdMob iOS Rewarded | `ca-app-pub-6482116152023017/8205801765` |
 | Gizlilik (TR / EN) | `https://aldros.site/panthop/gizlilik` · `/panthop/privacy` |
+| Gizlilik sürümü | `PRIVACY_VERSION = 2` ([js/storage.js](js/storage.js)) |
 | Geliştirici web sitesi | `https://aldros.site` (app-ads.txt buna bağlı) |
 | İletişim e-postası | `ozanyvz92@yandex.com` |
 | Site deposu | `C:\Users\only-\OneDrive\Documents\GitHub\Aldros-art` (Netlify) |
