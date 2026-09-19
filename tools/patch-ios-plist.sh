@@ -3,15 +3,13 @@
 # needs. Idempotent — safe to re-run after every `cap sync` is NOT needed
 # (sync does not touch Info.plist), but re-running does no harm.
 #
-# TODO(real-ids): replace GAD_APP_ID with the real AdMob **iOS** App ID
-# (create a separate iOS app in the AdMob console — the Android ID is invalid
-# on iOS). Until then Google's official iOS TEST App ID is used.
+# GAD_APP_ID is the AdMob **iOS** App ID (the Android one is invalid on iOS).
 set -euo pipefail
 
 PLIST="$(dirname "$0")/../ios/App/App/Info.plist"
 PB=/usr/libexec/PlistBuddy
 
-GAD_APP_ID="ca-app-pub-3940256099942544~1458002511"  # Google TEST iOS App ID
+GAD_APP_ID="ca-app-pub-6482116152023017~3621532807"  # Panthop (iOS)
 ATT_TEXT="Verileriniz, size daha uygun reklamlar gösterebilmek için kullanılır."
 
 if [[ ! -f "$PLIST" ]]; then
@@ -55,4 +53,4 @@ for id in "${SKAD_IDS[@]}"; do
   i=$((i+1))
 done
 
-echo "Info.plist yamalandı: GADApplicationIdentifier (TEST), ATT metni, portre kilidi, ${#SKAD_IDS[@]} SKAdNetwork kimliği."
+echo "Info.plist yamalandı: GADApplicationIdentifier, ATT metni, portre kilidi, ${#SKAD_IDS[@]} SKAdNetwork kimliği."

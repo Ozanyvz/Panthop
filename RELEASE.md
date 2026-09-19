@@ -155,7 +155,7 @@ gösterir. Reddedilme sebebi değil ama kalite kaybı.
 
 ---
 
-## 3. AdMob — Android BİTTİ, iOS açık
+## 3. AdMob — BİTTİ
 
 **Android gerçek kimliklere geçti** (2026-09-18):
 - `AndroidManifest.xml` → `ca-app-pub-6482116152023017~7362056597`
@@ -164,12 +164,16 @@ gösterir. Reddedilme sebebi değil ama kalite kaybı.
 
 İmzalı AAB'nin içinden doğrulandı.
 
+**iOS de gerçek kimliklere geçti** (2026-09-19):
+- `Info.plist` / `patch-ios-plist.sh` → `ca-app-pub-6482116152023017~3621532807`
+- `admob.js` → rewarded (ios) `ca-app-pub-6482116152023017/8205801765`
+
+**Gizlilik mesajları yayında** (2026-09-19): GDPR (Avrupa tüzükleri) ve ABD eyalet
+yönetmelikleri mesajları oluşturuldu. ABD mesajı otomatik açılmaz; giriş noktası
+oyundaki **Ayarlar → Gizlilik → Reklam Tercihleri** butonu
+([index.html](index.html) `ad-privacy-btn` → `showPrivacyOptionsForm()`).
+
 Kalanlar:
-- [ ] **iOS kimlikleri** → [6a bölümü](#6a-kodda-açık-kalanlar-mace-geçmeden-önce)
-- [ ] **AdMob → Gizlilik ve mesajlaşma → GDPR mesajı** oluştur.
-      Bu olmadan Avrupa'da onay formu boş döner ve orada reklam sunulmayabilir.
-      (Kod tarafı hazır: `ensureConsent()` formu çağırıyor.)
-- [ ] Aynı sayfada **ABD eyalet düzenlemeleri** mesajı
 - [ ] Yayınlandıktan sonra AdMob uygulamasını Play kaydına bağla →
       `app-ads.txt` doğrulaması o zaman çalışır
 
@@ -261,20 +265,19 @@ ID'leri koda gir. (İstemezsen bu adımı atla — oyun yerel başarımlarla sor
 
 ### 6a. KODDA AÇIK KALANLAR (Mac'e geçmeden önce)
 
-#### AdMob iOS kimlikleri — ZORUNLU
-Android gerçek kimliklere geçti, **iOS hâlâ Google'ın TEST reklam biriminde.**
-AdMob kimlikleri platforma özel; konsolda ayrı bir iOS uygulaması oluşturman
-gerekiyor (Android'inki iOS'ta geçersiz).
+#### AdMob iOS kimlikleri — BİTTİ (2026-09-19)
+Konsolda ayrı iOS uygulaması oluşturuldu ve gerçek kimlikler koda işlendi:
 
-- [ ] AdMob → Uygulama ekle → **iOS** → Panthop → **Uygulama kimliği** (`~` içerir)
-- [ ] Aynı uygulamaya **Ödüllü** reklam birimi → **birim kimliği** (`/` içerir)
-- [ ] [tools/patch-ios-plist.sh](tools/patch-ios-plist.sh) satır 14 → `GAD_APP_ID`
-- [ ] [js/services/providers/admob.js](js/services/providers/admob.js) → `REWARDED_UNIT.ios`
-- [ ] Mac'te `npm run ios:setup` tekrar çalıştır (Info.plist'e işlensin)
+- [x] Uygulama kimliği `ca-app-pub-6482116152023017~3621532807`
+      → [tools/patch-ios-plist.sh](tools/patch-ios-plist.sh) `GAD_APP_ID` +
+      [ios/App/App/Info.plist](ios/App/App/Info.plist) `GADApplicationIdentifier`
+- [x] Ödüllü birim `ca-app-pub-6482116152023017/8205801765`
+      → [js/services/providers/admob.js](js/services/providers/admob.js) `REWARDED_UNIT.ios`
+- [ ] Mac'te `npm run ios:setup` çalıştır — Info.plist zaten gerçek kimliği
+      taşıyor, script SKAdNetwork listesi ve ATT metni için yine de çalışmalı.
 
-> Google'ın test birimleri `USE_TEST_ADS` ne olursa olsun test reklamı döndürür.
-> Yani iOS bu hâliyle çöker değil, sessizce test reklamı gösterir ve **hiç kazanç
-> getirmez**. App Store'a bu hâlde gönderme.
+> `USE_TEST_ADS = false`. Gerçek kimlik + false = gerçek reklam; test cihazında
+> denemek isterseniz geçici olarak true yapın, o hâlde göndermeyin.
 
 #### iOS uygulama ikonu — ZORUNLU
 [tools/make-app-icon.mjs](tools/make-app-icon.mjs) **yalnızca Android** kaynaklarını

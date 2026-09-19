@@ -11,14 +11,13 @@ const AdMob = registerPlugin('AdMob');
    The App ID that pairs with these lives in AndroidManifest.xml (Android) and
    tools/patch-ios-plist.sh -> Info.plist (iOS).
 
-   !! iOS IS STILL ON GOOGLE'S TEST UNIT. AdMob ids are per-platform: an iOS app
-   has to be created separately in the console and its own rewarded unit pasted
-   below before the first App Store build. Google's test units always serve test
-   ads no matter what USE_TEST_ADS says, so iOS simply keeps showing test ads
-   until then — it will not earn, and must not ship that way. */
+   Both platforms run on their own real units (the iOS app and its rewarded
+   unit were created in the console on 2026-09-19). AdMob ids are per-platform,
+   so neither side's id works on the other. USE_TEST_ADS below is the only
+   switch back to test ads — never ship it true. */
 const REWARDED_UNIT = {
   android: 'ca-app-pub-6482116152023017/3833875129', // Panthop rewarded (Android)
-  ios:     'ca-app-pub-3940256099942544/1712485313', // TODO(ios-ids): Google TEST unit
+  ios:     'ca-app-pub-6482116152023017/8205801765', // Panthop rewarded (iOS)
 };
 // Registers the running device as a test device. Real units + false = real ads.
 const USE_TEST_ADS = false;
