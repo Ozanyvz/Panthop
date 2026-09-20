@@ -466,7 +466,7 @@ function closeConfirm() {
    natives: Android ignores _blank, loads in place and Capacitor's
    shouldOverrideUrlLoading fires an ACTION_VIEW intent for the foreign host;
    iOS routes it through createWebViewWith → UIApplication.open. */
-const PRIVACY_URL_FALLBACK = 'https://aldros.site/panthop/gizlilik';
+const PRIVACY_URL_FALLBACK = 'https://aldros.site/panthop/privacy';
 
 function applyPrivacyLinks() {
   const url = i18n.t('privacy.url');

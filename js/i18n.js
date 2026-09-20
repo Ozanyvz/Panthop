@@ -1,5 +1,8 @@
 const SUPPORTED = ['tr', 'en'];
-const FALLBACK = 'tr';
+// Device languages we do not ship land here. English reaches far more of them
+// than Turkish does, and a Turkish device is already caught by the
+// navigator.language check below, so this costs tr players nothing.
+const FALLBACK = 'en';
 const STORAGE_KEY = 'wj_lang_v1';
 
 const memoryCache = new Map();
